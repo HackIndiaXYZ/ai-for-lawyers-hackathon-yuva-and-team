@@ -1,0 +1,163 @@
+/* Styles for source chips, the provision dialog and the Law library tab. */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Source chips ---------- */
+.src-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+.src-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 58, 237, 0.55);
+  background: rgba(124, 58, 237, 0.16);
+  color: #e9defd;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.src-chip:hover {
+  border-color: var(--pink);
+  background: rgba(236, 72, 153, 0.2);
+}
+
+/* Chips on the light contract paper need dark text */
+.sheet .src-chip {
+  color: #4c1d95;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.sheet-note {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(27, 34, 51, 0.25);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* ---------- Provision dialog ---------- */
+.src-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #121a2e;
+  color: var(--text);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  overflow: auto;
+}
+
+.src-dialog::backdrop {
+  background: rgba(3, 6, 14, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.src-body {
+  padding: 24px;
+}
+
+.src-body h2 {
+  font-size: 1.3rem;
+  margin-bottom: 4px;
+}
+
+.src-body h3 {
+  font-size: 0.95rem;
+  margin: 16px 0 4px;
+  color: var(--text-2);
+}
+
+.src-body p {
+  margin: 0 0 8px;
+}
+
+.src-ref {
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+
+.src-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.src-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.src-actions .btn-primary {
+  color: #fff;
+}
+
+/* ---------- Law library tab ---------- */
+.law-search input {
+  width: 100%;
+  min-height: 48px;
+  margin: 12px 0 8px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 1rem;
+}
+
+.law-search input::placeholder {
+  color: var(--text-2);
+}
+
+.law-list {
+  display: grid;
+  gap: 14px;
+}
+
+.law-entry {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.law-entry p {
+  margin: 6px 0;
+}
+
+.law-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.law-head h3 {
+  font-size: 1.02rem;
+}
+
+.law-ref {
+  color: var(--text-2);
+  font-size: 0.85rem;
+}

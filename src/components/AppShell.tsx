@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import LawLibrary from "@/components/LawLibrary";
+import { SourceChips, SourceProvider } from "@/components/SourceProvider";
 
 type Tab = "talk" | "check" | "law";
 type Lang = "en" | "hi" | "te";
@@ -123,6 +125,10 @@ function TalkView() {
                 Your contract will appear here, line by line, as soon as we have talked
                 it through.
               </p>
+              <p className="sheet-note">
+                Every clause will carry a short note on why it is there, with the law it
+                relies on: <SourceChips ids={["ICA-74", "TPA-106"]} />
+              </p>
             </div>
           </div>
         </section>
@@ -145,70 +151,67 @@ export default function AppShell() {
   const [lang, setLang] = useState<Lang>("en");
 
   return (
-    <main className="app">
-      <div className="demo-banner" role="status">
-        <span className="badge badge-warn">Demo mode</span>
-        <span>Sample answers only. The real AI will be switched on later.</span>
-      </div>
-
-      <header className="topbar">
-        <div className="brand">
-          <h1 className="brand-name">Sandhi</h1>
-          <span className="brand-deva" lang="hi">संधि</span>
-          <span className="brand-tag">speak it, sign it</span>
+    <SourceProvider>
+      <main className="app">
+        <div className="demo-banner" role="status">
+          <span className="badge badge-warn">Demo mode</span>
+          <span>Sample answers only. The real AI will be switched on later.</span>
         </div>
 
-        <div className="lang" role="group" aria-label="Language">
-          {LANGS.map((l) => (
+        <header className="topbar">
+          <div className="brand">
+            <h1 className="brand-name">Sandhi</h1>
+            <span className="brand-deva" lang="hi">संधि</span>
+            <span className="brand-tag">speak it, sign it</span>
+          </div>
+
+          <div className="lang" role="group" aria-label="Language">
+            {LANGS.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                aria-pressed={lang === l.id}
+                aria-label={l.name}
+                onClick={() => setLang(l.id)}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <div className="tabs" role="tablist" aria-label="Sandhi sections">
+          {TABS.map((t) => (
             <button
-              key={l.id}
+              key={t.id}
               type="button"
-              aria-pressed={lang === l.id}
-              aria-label={l.name}
-              onClick={() => setLang(l.id)}
+              role="tab"
+              id={`tab-${t.id}`}
+              aria-selected={tab === t.id}
+              aria-controls={`panel-${t.id}`}
+              className="tab"
+              onClick={() => setTab(t.id)}
             >
-              {l.label}
+              {t.label}
             </button>
           ))}
         </div>
-      </header>
 
-      <div className="tabs" role="tablist" aria-label="Sandhi sections">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            id={`tab-${t.id}`}
-            aria-selected={tab === t.id}
-            aria-controls={`panel-${t.id}`}
-            className="tab"
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+        <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+          {tab === "talk" && <TalkView />}
+          {tab === "check" && (
+            <PlaceholderView
+              title="Check a contract"
+              text="Paste or photograph a contract and Sandhi will brief you on it and find the loopholes. Built in Phase 6."
+            />
+          )}
+          {tab === "law" && <LawLibrary />}
+        </div>
 
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "talk" && <TalkView />}
-        {tab === "check" && (
-          <PlaceholderView
-            title="Check a contract"
-            text="Paste or photograph a contract and Sandhi will brief you on it and find the loopholes. Built in Phase 6."
-          />
-        )}
-        {tab === "law" && (
-          <PlaceholderView
-            title="Law library"
-            text="A searchable library of the Indian law provisions Sandhi cites. Built in Phase 3."
-          />
-        )}
-      </div>
-
-      <footer className="footer">
-        Sandhi is an assistant, not a lawyer. For high-value or disputed matters, speak to an advocate.
-      </footer>
-    </main>
+        <footer className="footer">
+          Sandhi is an assistant, not a lawyer. For high-value or disputed matters, speak to an advocate.
+        </footer>
+      </main>
+    </SourceProvider>
   );
 }
