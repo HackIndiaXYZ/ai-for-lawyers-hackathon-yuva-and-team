@@ -5,6 +5,7 @@ import "./law.css";
 import "./talk.css";
 import "./check.css";
 import "./seal.css";
+import "./voice.css";
 
 const display = Space_Grotesk({
   subsets: ["latin"],

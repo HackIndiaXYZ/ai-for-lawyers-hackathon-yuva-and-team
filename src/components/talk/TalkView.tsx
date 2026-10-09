@@ -11,6 +11,7 @@ import DetailsCard, { InterviewProgress, type Detail } from "./DetailsCard";
 import { AdviceCard, LegalAlertCard, LegalCheckPanel, ReviewBanner, type Advice, type Flag, type LegalState } from "./cards";
 import { BeforeYouSign, ContractPaper } from "./ContractPaper";
 import PrintSheet from "./PrintSheet";
+import { MIN_CONFIDENCE, useVoice } from "./useVoice";
 import SealPanel from "./SealPanel";
 
 const MAX_TURNS = 24;
@@ -29,6 +30,7 @@ const GREETING =
 type Item =
   | { id: number; kind: "you"; text: string }
   | { id: number; kind: "say"; text: string }
+  | { id: number; kind: "note"; text: string }
   | { id: number; kind: "advice"; advice: Advice }
   | { id: number; kind: "alert"; flag: Flag }
   | { id: number; kind: "error"; text: string; review: boolean };
@@ -36,6 +38,7 @@ type Item =
 type NewItem =
   | { kind: "you"; text: string }
   | { kind: "say"; text: string }
+  | { kind: "note"; text: string }
   | { kind: "advice"; advice: Advice }
   | { kind: "alert"; flag: Flag }
   | { kind: "error"; text: string; review: boolean };
@@ -138,6 +141,25 @@ export default function TalkView({
     noticeTimer.current = setTimeout(() => setNotice(""), 5000);
   }, []);
 
+  /* ---------------- voice ---------------- */
+
+  const voiceNoted = useRef(false);
+  const sendRef = useRef<(text: string, fromVoice?: boolean) => Promise<void>>(async () => {});
+
+  const voice = useVoice({
+    lang,
+    onNotice: showNotice,
+    onHeard: (text, confidence) => {
+      if (confidence !== null && confidence < MIN_CONFIDENCE) {
+        // Not sure what was said: let the person check the words before they go anywhere.
+        setInput(text);
+        showNotice("I wasn't sure I heard that right. Please check the words, fix any mistakes, then press Send.");
+        return;
+      }
+      void sendRef.current(text, true);
+    },
+  });
+
   /* ---------------- legal check ---------------- */
 
   const runLegalCheck = useCallback(
@@ -213,15 +235,9 @@ export default function TalkView({
     const keepPartial = text.length > 200;
 
     if (res.ok) {
-      update((p) =>
-        withItem(
-          { ...p, drafting: false, drafted: true },
-          {
-            kind: "say",
-            text: "Your contract is on the right. Please read it carefully, and look at the legal check under it before you sign.",
-          },
-        ),
-      );
+      const doneText = "Your contract is on the right. Please read it carefully, and look at the legal check under it before you sign.";
+      update((p) => withItem({ ...p, drafting: false, drafted: true }, { kind: "say", text: doneText }));
+      voice.speakReply(doneText);
       await runLegalCheck(text, cur.contractType);
       return;
     }
@@ -244,18 +260,28 @@ export default function TalkView({
         }),
       );
     }
-  }, [runLegalCheck, update]);
+  }, [runLegalCheck, update, voice]);
 
   /* ---------------- conversation ---------------- */
 
   const send = useCallback(
-    async (raw: string) => {
+    async (raw: string, fromVoice = false) => {
       const text = raw.trim();
       const cur = sRef.current;
       if (!text || cur.busy || cur.drafting) return;
+      if (!fromVoice) voice.stopSpeaking(); // typing takes over from a reply that is still being read
 
       const turns: Turn[] = [...cur.turns, { role: "user", content: text }];
       update((p) => withItem({ ...p, busy: true, turns }, { kind: "you", text }));
+      if (fromVoice && !voiceNoted.current) {
+        voiceNoted.current = true;
+        update((p) =>
+          withItem(p, {
+            kind: "note",
+            text: "Voice can mishear names and numbers. Check the amounts and names under \"What I've heard so far\", and tell me if anything is wrong.",
+          }),
+        );
+      }
 
       const state: ChatState = {
         lang,
@@ -311,6 +337,8 @@ export default function TalkView({
         if (d.advice) next = withItem(next, { kind: "advice", advice: d.advice });
         return next;
       });
+      // Read it out: the reply, then any legal warning, so someone who only listens still hears it.
+      voice.speakReply([d.reply, ...d.legal_flags.map((f) => `Careful: ${f.issue}. ${f.consequence}`)].join(" "));
 
       if (changed.length > 0) {
         if (flashTimer.current) clearTimeout(flashTimer.current);
@@ -321,8 +349,9 @@ export default function TalkView({
       const allowed = d.ready || cur.pushback >= 1;
       if (d.action === "draft_now" && allowed) await generateContract();
     },
-    [generateContract, lang, update],
+    [generateContract, lang, update, voice],
   );
+  sendRef.current = send;
 
   /* ---------------- redraft from the Check a contract tab ---------------- */
 
@@ -401,6 +430,7 @@ export default function TalkView({
   function onStop() {
     draftAbort.current?.abort();
     chatAbort.current?.abort();
+    voice.cancelAll();
   }
 
   function onReset() {
@@ -411,18 +441,36 @@ export default function TalkView({
     sRef.current = INITIAL;
     setS(INITIAL);
     setInput("");
+    voice.cancelAll();
+    voiceNoted.current = false;
   }
 
   function onOrb() {
-    showNotice("Voice input is added in a later phase. For now, please type your message.");
+    if (voice.listening || voice.speaking) {
+      voice.toggleMic();
+      return;
+    }
+    if (s.busy || s.drafting) {
+      showNotice("One moment. I am still working on your last message.");
+      return;
+    }
+    voice.toggleMic();
   }
 
   function onPickType(value: string) {
     update((p) => ({ ...p, contractType: value || null }));
   }
 
-  const orbState = s.busy || s.drafting ? "thinking" : "idle";
-  const orbLabel = s.busy ? "Thinking…" : s.drafting ? "Writing your contract…" : "Tap to talk";
+  const orbState = voice.listening ? "listening" : s.busy || s.drafting ? "thinking" : voice.speaking ? "speaking" : "idle";
+  const orbLabel = voice.listening
+    ? "Listening… tap when you are done"
+    : s.busy
+      ? "Thinking…"
+      : s.drafting
+        ? "Writing your contract…"
+        : voice.speaking
+          ? "Speaking… tap to interrupt"
+          : "Tap to talk";
   const hasUserTurn = s.turns.some((t) => t.role === "user");
   const draftLabel = s.drafted ? "Redraft" : "Draft contract";
   const draftDisabled = !s.contractType || s.busy || s.drafting;
@@ -437,6 +485,7 @@ export default function TalkView({
           {s.items.map((it) => {
             if (it.kind === "you") return <p key={it.id} className="you">{it.text}</p>;
             if (it.kind === "say") return <p key={it.id} className="say">{it.text}</p>;
+            if (it.kind === "note") return <p key={it.id} className="voice-note">{it.text}</p>;
             if (it.kind === "alert") return <LegalAlertCard key={it.id} flag={it.flag} />;
             if (it.kind === "advice") return <AdviceCard key={it.id} advice={it.advice} />;
             return (
@@ -464,18 +513,31 @@ export default function TalkView({
         )}
 
         <div className="caption" aria-live="polite">
-          {notice}
+          {voice.listening ? (voice.interim ? `I hear: “${voice.interim}”` : "Go ahead, I'm listening…") : notice}
         </div>
 
         <div className="orb-wrap">
-          <button type="button" className="orb" data-state={orbState} onClick={onOrb} aria-label="Voice input (coming soon)">
+          <button
+            type="button"
+            className="orb"
+            data-state={orbState}
+            onClick={onOrb}
+            aria-pressed={voice.listening}
+            aria-label={voice.listening ? "Stop listening" : voice.speaking ? "Stop speaking and talk" : "Talk to Sandhi"}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <rect x="9" y="2" width="6" height="12" rx="3" />
               <path d="M5 11a7 7 0 0 0 14 0" />
               <path d="M12 18v4" />
             </svg>
           </button>
-          <span className="muted">{orbLabel}</span>
+          <span className="muted" aria-live="polite">{orbLabel}</span>
+          {voice.support.speak && (
+            <label className="voice-toggle">
+              <input type="checkbox" checked={voice.voiceOn} onChange={(e) => voice.setVoiceOn(e.target.checked)} />
+              Read Sandhi&apos;s replies aloud
+            </label>
+          )}
         </div>
 
         <form className="inputrow" onSubmit={onSubmit}>

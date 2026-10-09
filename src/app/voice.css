@@ -1,0 +1,41 @@
+/* Styles for voice: listening and speaking states of the microphone button. */
+
+.orb-wrap .orb[data-state="listening"] {
+  animation: orb-listen 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 6px rgba(236, 72, 153, 0.35), 0 0 36px rgba(236, 72, 153, 0.55);
+}
+.orb-wrap .orb[data-state="speaking"] {
+  animation: orb-speak 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.3), 0 0 32px rgba(245, 158, 11, 0.5);
+}
+@keyframes orb-listen {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+@keyframes orb-speak {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orb-wrap .orb[data-state="listening"],
+  .orb-wrap .orb[data-state="speaking"] {
+    animation: none;
+  }
+}
+.voice-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.voice-note {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
