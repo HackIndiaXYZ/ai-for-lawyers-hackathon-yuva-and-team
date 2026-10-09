@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LawLibrary from "@/components/LawLibrary";
-import { SourceChips, SourceProvider } from "@/components/SourceProvider";
+import TalkView from "@/components/talk/TalkView";
+import { getMode, type ApiMode } from "@/lib/api";
+import { SourceProvider } from "@/components/SourceProvider";
 
 type Tab = "talk" | "check" | "law";
 type Lang = "en" | "hi" | "te";
-type OrbState = "idle" | "listening" | "thinking" | "speaking";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "talk", label: "Talk and draft" },
@@ -20,123 +21,6 @@ const LANGS: { id: Lang; label: string; name: string }[] = [
   { id: "te", label: "తె", name: "Telugu" },
 ];
 
-const STARTERS = [
-  "I want to rent out my flat",
-  "I'm hiring a freelance designer",
-  "I need an NDA before sharing my idea",
-  "My landlord won't return my deposit",
-  "I'm selling my bike",
-];
-
-const ORB_ORDER: OrbState[] = ["idle", "listening", "thinking", "speaking"];
-
-const ORB_LABEL: Record<OrbState, string> = {
-  idle: "Tap to talk",
-  listening: "Listening…",
-  thinking: "Thinking…",
-  speaking: "Speaking…",
-};
-
-function MicIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="9" y="2" width="6" height="12" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0" />
-      <path d="M12 18v4" />
-    </svg>
-  );
-}
-
-function TalkView() {
-  const [orb, setOrb] = useState<OrbState>("idle");
-
-  // Temporary: tapping the orb cycles through its four looks so you can see them.
-  // The real microphone arrives in the voice phase.
-  function cycleOrb() {
-    const next = ORB_ORDER[(ORB_ORDER.indexOf(orb) + 1) % ORB_ORDER.length];
-    setOrb(next);
-  }
-
-  return (
-    <div className="grid2">
-      <section className="card" aria-label="Conversation">
-        <h2>Talk to Sandhi</h2>
-        <div className="transcript" role="log" aria-live="polite">
-          <p className="say">
-            Hello, I&apos;m Sandhi. Tell me what&apos;s on your mind: a legal worry, or a
-            document you need. Don&apos;t worry, we&apos;ll go through it together.
-          </p>
-        </div>
-
-        <div className="chips">
-          {STARTERS.map((s) => (
-            <button key={s} type="button" className="chip" disabled title="Comes alive in the next phase">
-              {s}
-            </button>
-          ))}
-        </div>
-
-        <div className="caption" aria-live="polite">
-          {orb === "listening" ? "Your words will appear here as you speak." : ""}
-        </div>
-
-        <div className="orb-wrap">
-          <button
-            type="button"
-            className="orb"
-            data-state={orb}
-            onClick={cycleOrb}
-            aria-label={ORB_LABEL[orb]}
-          >
-            <MicIcon />
-          </button>
-          <span className="muted">{ORB_LABEL[orb]}</span>
-        </div>
-
-        <div className="inputrow">
-          <input type="text" placeholder="Or type here…" aria-label="Type your message" disabled />
-          <button type="button" className="btn btn-primary" disabled>
-            Send
-          </button>
-        </div>
-      </section>
-
-      <div className="stack">
-        <section className="card" aria-label="Interview progress and details">
-          <h2>What I&apos;ve heard so far</h2>
-          <div className="muted">Interview step 1 of 6: background</div>
-          <div className="progress" aria-hidden="true">
-            <span style={{ width: "16%" }} />
-          </div>
-          <p className="empty">
-            Nothing yet. Start talking and I&apos;ll note names, amounts and dates here.
-          </p>
-        </section>
-
-        <section aria-label="Contract preview">
-          <div className="paper">
-            <div className="paper-ribbon">
-              <span>Your contract</span>
-              <small>Not yet stamped or signed</small>
-            </div>
-            <div className="sheet">
-              <h3>AGREEMENT</h3>
-              <p>
-                Your contract will appear here, line by line, as soon as we have talked
-                it through.
-              </p>
-              <p className="sheet-note">
-                Every clause will carry a short note on why it is there, with the law it
-                relies on: <SourceChips ids={["ICA-74", "TPA-106"]} />
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-  );
-}
-
 function PlaceholderView({ title, text }: { title: string; text: string }) {
   return (
     <section className="card">
@@ -149,14 +33,33 @@ function PlaceholderView({ title, text }: { title: string; text: string }) {
 export default function AppShell() {
   const [tab, setTab] = useState<Tab>("talk");
   const [lang, setLang] = useState<Lang>("en");
+  const [mode, setMode] = useState<ApiMode | "offline" | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getMode().then((m) => {
+      if (alive) setMode(m ?? "offline");
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <SourceProvider>
       <main className="app">
-        <div className="demo-banner" role="status">
-          <span className="badge badge-warn">Demo mode</span>
-          <span>Sample answers only. The real AI will be switched on later.</span>
-        </div>
+        {mode === "demo" && (
+          <div className="demo-banner" role="status">
+            <span className="badge badge-warn">Demo mode</span>
+            <span>Sample answers only, not real AI. The real AI will be switched on later.</span>
+          </div>
+        )}
+        {mode === "offline" && (
+          <div className="demo-banner" role="alert">
+            <span className="badge badge-bad">Offline</span>
+            <span>Could not reach the Sandhi server. Please refresh the page.</span>
+          </div>
+        )}
 
         <header className="topbar">
           <div className="brand">
@@ -197,15 +100,18 @@ export default function AppShell() {
           ))}
         </div>
 
-        <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-          {tab === "talk" && <TalkView />}
-          {tab === "check" && (
-            <PlaceholderView
-              title="Check a contract"
-              text="Paste or photograph a contract and Sandhi will brief you on it and find the loopholes. Built in Phase 6."
-            />
-          )}
-          {tab === "law" && <LawLibrary />}
+        {/* All three panels stay mounted, so a conversation is not lost when you switch tabs. */}
+        <div role="tabpanel" id="panel-talk" aria-labelledby="tab-talk" hidden={tab !== "talk"}>
+          <TalkView lang={lang} />
+        </div>
+        <div role="tabpanel" id="panel-check" aria-labelledby="tab-check" hidden={tab !== "check"}>
+          <PlaceholderView
+            title="Check a contract"
+            text="Paste or photograph a contract and Sandhi will brief you on it and find the loopholes. Built in Phase 6."
+          />
+        </div>
+        <div role="tabpanel" id="panel-law" aria-labelledby="tab-law" hidden={tab !== "law"}>
+          <LawLibrary />
         </div>
 
         <footer className="footer">
