@@ -3,17 +3,19 @@
 import { useEffect, useState } from "react";
 import LawLibrary from "@/components/LawLibrary";
 import CheckView from "@/components/check/CheckView";
+import VerifyView, { type VerifyPrefill } from "@/components/verify/VerifyView";
 import TalkView from "@/components/talk/TalkView";
 import type { RedraftRequest } from "@/lib/review";
 import { getMode, type ApiMode } from "@/lib/api";
 import { SourceProvider } from "@/components/SourceProvider";
 
-type Tab = "talk" | "check" | "law";
+type Tab = "talk" | "check" | "verify" | "law";
 type Lang = "en" | "hi" | "te";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "talk", label: "Talk and draft" },
   { id: "check", label: "Check a contract" },
+  { id: "verify", label: "Verify a copy" },
   { id: "law", label: "Law library" },
 ];
 
@@ -28,6 +30,7 @@ export default function AppShell() {
   const [lang, setLang] = useState<Lang>("en");
   const [mode, setMode] = useState<ApiMode | "offline" | null>(null);
   const [redraft, setRedraft] = useState<RedraftRequest | null>(null);
+  const [verifyFor, setVerifyFor] = useState<VerifyPrefill | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -94,9 +97,16 @@ export default function AppShell() {
           ))}
         </div>
 
-        {/* All three panels stay mounted, so a conversation is not lost when you switch tabs. */}
+        {/* All four panels stay mounted, so a conversation is not lost when you switch tabs. */}
         <div role="tabpanel" id="panel-talk" aria-labelledby="tab-talk" hidden={tab !== "talk"}>
-          <TalkView lang={lang} redraft={redraft} />
+          <TalkView
+            lang={lang}
+            redraft={redraft}
+            onVerify={(seal) => {
+              setVerifyFor({ id: Date.now(), seal });
+              setTab("verify");
+            }}
+          />
         </div>
         <div role="tabpanel" id="panel-check" aria-labelledby="tab-check" hidden={tab !== "check"}>
           <CheckView
@@ -105,6 +115,9 @@ export default function AppShell() {
               setTab("talk");
             }}
           />
+        </div>
+        <div role="tabpanel" id="panel-verify" aria-labelledby="tab-verify" hidden={tab !== "verify"}>
+          <VerifyView prefill={verifyFor} active={tab === "verify"} />
         </div>
         <div role="tabpanel" id="panel-law" aria-labelledby="tab-law" hidden={tab !== "law"}>
           <LawLibrary />

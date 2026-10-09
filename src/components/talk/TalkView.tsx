@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { CONTRACT_TYPES } from "@/lib/law";
 import { canonical, parseContract } from "@/lib/contract";
+import { fillBlanks, type SealRecord } from "@/lib/seal";
 import { postJson, streamDraft } from "@/lib/api";
 import type { RedraftRequest } from "@/lib/review";
 import type { ChatState, ConversationReply, LangCode, LegalCheck, Stage, Turn } from "@/lib/ai/schemas";
 import DetailsCard, { InterviewProgress, type Detail } from "./DetailsCard";
 import { AdviceCard, LegalAlertCard, LegalCheckPanel, ReviewBanner, type Advice, type Flag, type LegalState } from "./cards";
 import { BeforeYouSign, ContractPaper } from "./ContractPaper";
+import PrintSheet from "./PrintSheet";
+import SealPanel from "./SealPanel";
 
 const MAX_TURNS = 24;
 
@@ -54,6 +57,7 @@ interface Session {
   drafting: boolean;
   legal: LegalState;
   flash: string[];
+  seal: SealRecord | null;
 }
 
 const INITIAL: Session = {
@@ -73,6 +77,7 @@ const INITIAL: Session = {
   drafting: false,
   legal: { state: "idle" },
   flash: [],
+  seal: null,
 };
 
 function flatDetails(d: Record<string, Detail>): Record<string, string> {
@@ -83,7 +88,15 @@ function withItem(p: Session, item: NewItem): Session {
   return { ...p, nextId: p.nextId + 1, items: [...p.items, { ...item, id: p.nextId } as Item] };
 }
 
-export default function TalkView({ lang, redraft = null }: { lang: LangCode; redraft?: RedraftRequest | null }) {
+export default function TalkView({
+  lang,
+  redraft = null,
+  onVerify,
+}: {
+  lang: LangCode;
+  redraft?: RedraftRequest | null;
+  onVerify?: (seal: SealRecord) => void;
+}) {
   const [s, setS] = useState<Session>(INITIAL);
   // The ref always holds the latest session, so async steps never read stale values.
   const sRef = useRef<Session>(INITIAL);
@@ -154,7 +167,7 @@ export default function TalkView({ lang, redraft = null }: { lang: LangCode; red
 
     const ctl = new AbortController();
     draftAbort.current = ctl;
-    update((p) => ({ ...p, drafting: true, draftText: "", legal: { state: "idle" } }));
+    update((p) => ({ ...p, drafting: true, draftText: "", seal: null, legal: { state: "idle" } }));
 
     const said =
       opts?.said ??
@@ -336,6 +349,40 @@ export default function TalkView({ lang, redraft = null }: { lang: LangCode; red
     });
   }, [redraft, generateContract]);
 
+  /* ---------------- blanks, seal and printing ---------------- */
+
+  const onFill = useCallback(
+    (values: Record<string, string>) => {
+      const cur = sRef.current;
+      if (cur.seal || cur.drafting) return; // a sealed contract must be unsealed before it can change
+      const next = fillBlanks(cur.draftText, values);
+      if (next === cur.draftText) return;
+      update((p) => ({ ...p, draftText: next }));
+      void runLegalCheck(next, cur.contractType); // the old check was about the old words
+    },
+    [runLegalCheck, update],
+  );
+
+  const onSealed = useCallback((seal: SealRecord) => update((p) => ({ ...p, seal })), [update]);
+  const onUnseal = useCallback(() => update((p) => ({ ...p, seal: null })), [update]);
+
+  const onPrint = useCallback(() => {
+    const previous = document.title;
+    const title = parseContract(sRef.current.draftText).title;
+    if (title) document.title = title;
+    const restore = () => {
+      document.title = previous;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    try {
+      window.print();
+    } catch {
+      restore();
+      showNotice("Printing is not available in this browser. Download the text file instead.");
+    }
+  }, [showNotice]);
+
   /* ---------------- buttons ---------------- */
 
   function onSubmit(e: FormEvent) {
@@ -500,7 +547,20 @@ export default function TalkView({ lang, redraft = null }: { lang: LangCode; red
         />
         <LegalCheckPanel legal={s.legal} />
         <BeforeYouSign model={model} />
+        <SealPanel
+          draftText={s.draftText}
+          drafted={s.drafted}
+          drafting={s.drafting}
+          legal={s.legal}
+          seal={s.seal}
+          onSealed={onSealed}
+          onUnseal={onUnseal}
+          onFill={onFill}
+          onVerify={(seal) => onVerify?.(seal)}
+          onPrint={onPrint}
+        />
       </div>
+      <PrintSheet model={model} seal={s.seal} />
     </div>
   );
 }

@@ -74,7 +74,9 @@ export function ContractPaper({
                   {model.signs.map((s, i) => (
                     <div key={i} className="sign">
                       <div className="sign-line" />
-                      <span>{s}</span>
+                      <span>
+                        <Inline text={s} />
+                      </span>
                     </div>
                   ))}
                 </div>
