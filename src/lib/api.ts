@@ -14,19 +14,19 @@ export type DraftBody = {
   extra?: string;
 };
 
-function isAbort(e: unknown): boolean {
+export function isAbort(e: unknown): boolean {
   return e instanceof DOMException && e.name === "AbortError";
 }
 
-const ABORTED: ApiFailure = { ok: false, code: "aborted", message: "Stopped.", needsHumanReview: false };
-const NETWORK: ApiFailure = {
+export const ABORTED: ApiFailure = { ok: false, code: "aborted", message: "Stopped.", needsHumanReview: false };
+export const NETWORK: ApiFailure = {
   ok: false,
   code: "network",
   message: "Could not reach the server. Check your internet connection and try again.",
   needsHumanReview: false,
 };
 
-async function readFailure(res: Response): Promise<ApiFailure> {
+export async function readFailure(res: Response): Promise<ApiFailure> {
   try {
     const b = await res.json();
     return {

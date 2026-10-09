@@ -1,4 +1,4 @@
-import { CONTRACT_TYPES, libraryText, relevant } from "../law";
+import { CONTRACT_TYPES, guessType, libraryText, relevant } from "../law";
 import { LANG_NAMES, type ChatState, type DraftRequest } from "./schemas";
 
 const TYPE_LIST = CONTRACT_TYPES.map((t) => t.name).join(" | ");
@@ -76,4 +76,19 @@ export function obligationsPrompt(text: string): string {
   return `From this contract, list the obligations that a smart contract could track or enforce (payments, deadlines, notices, deposits, deliverables, penalties). Reply with ONLY a JSON array of up to 10 objects: {"party":string,"action":string,"amount":string|null,"due":string,"trigger":string|null,"penalty":string|null}. Use "due" like "5th of every month" or "within 7 days of termination". Contract:
 
 ${text}`;
+}
+
+/** Prompt for the loophole check. The answer is JSON Lines so the page can show findings as they arrive. */
+export function reviewPrompt(text: string, role: string | null, hasImages: boolean): string {
+  const lib = libraryText(relevant(text, guessType(text), 28));
+  return `You are an Indian contract lawyer reviewing a contract for someone who is not a lawyer. ${hasImages ? "The contract is in the attached photo(s); read every page first." : ""}${role ? " The reader is " + role + "." : " Protect the weaker party."}
+Find every clause that could hurt the reader: one-sided terms, vague wording, unlimited liability, missing notice or cure periods, unfair penalties, unclear dates or amounts, bad jurisdiction or arbitration terms, anything unenforceable or against Indian law, and important protections that are missing.
+OUTPUT FORMAT: one compact JSON object per line (JSON Lines), nothing else, no code fences, no line breaks inside a value.
+First line: {"kind":"brief","type":"contract type","summary":"3 to 5 plain sentences: what this document is, who it is between, what it does","parties":["name and role"],"key_terms":[{"label":"e.g. Monthly rent","value":"as written"}],"obligations":[{"party":"who","duty":"what they must do"}],"unclear":["blanks, missing details or ambiguous wording"],"legal_notes":[{"point":"term or fact","status":"not_legal"|"unenforceable"|"risky"|"lawful","consequence":"plain words","sources":["IDs from the LAW LIBRARY"]}]}
+Second line: {"kind":"meta","type":"contract type","safety_score":0-100 (higher = safer for the reader),"headline":"one-sentence verdict","legal_verdict":"lawful"|"mostly lawful"|"contains unenforceable or illegal terms"}
+Then one line per risky clause, worst first: {"kind":"finding","severity":"high"|"medium"|"low","title":"short name","clause":"the exact words from the contract (under 40 words)","issue":"the loophole in plain English","risk":"how the other side could use it against the reader","status":"not_legal"|"unenforceable"|"risky"|"lawful","consequence":"what Indian law lets happen if this clause is relied on, in plain words, and say plainly if the clause is not legal","sources":["IDs from the LAW LIBRARY, never invented"],"law":"any extra law outside the library, else empty string","fix":"replacement wording the reader can paste"}
+Then one line per missing protection: {"kind":"missing","clause":"name","why":"why it matters"}
+LAW LIBRARY (cite ONLY these IDs in "sources"; never invent an ID):
+${lib}
+${text ? "CONTRACT TEXT:\n" + text.slice(0, 60000) : ""}`;
 }

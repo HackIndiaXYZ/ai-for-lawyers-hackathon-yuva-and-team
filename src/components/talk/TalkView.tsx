@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { CONTRACT_TYPES } from "@/lib/law";
 import { canonical, parseContract } from "@/lib/contract";
 import { postJson, streamDraft } from "@/lib/api";
+import type { RedraftRequest } from "@/lib/review";
 import type { ChatState, ConversationReply, LangCode, LegalCheck, Stage, Turn } from "@/lib/ai/schemas";
 import DetailsCard, { InterviewProgress, type Detail } from "./DetailsCard";
 import { AdviceCard, LegalAlertCard, LegalCheckPanel, ReviewBanner, type Advice, type Flag, type LegalState } from "./cards";
@@ -82,7 +83,7 @@ function withItem(p: Session, item: NewItem): Session {
   return { ...p, nextId: p.nextId + 1, items: [...p.items, { ...item, id: p.nextId } as Item] };
 }
 
-export default function TalkView({ lang }: { lang: LangCode }) {
+export default function TalkView({ lang, redraft = null }: { lang: LangCode; redraft?: RedraftRequest | null }) {
   const [s, setS] = useState<Session>(INITIAL);
   // The ref always holds the latest session, so async steps never read stale values.
   const sRef = useRef<Session>(INITIAL);
@@ -143,7 +144,7 @@ export default function TalkView({ lang }: { lang: LangCode }) {
 
   /* ---------------- drafting ---------------- */
 
-  const generateContract = useCallback(async () => {
+  const generateContract = useCallback(async (opts?: { extra?: string; said?: string }) => {
     const cur = sRef.current;
     if (cur.drafting) return;
     if (!cur.contractType) {
@@ -155,19 +156,21 @@ export default function TalkView({ lang }: { lang: LangCode }) {
     draftAbort.current = ctl;
     update((p) => ({ ...p, drafting: true, draftText: "", legal: { state: "idle" } }));
 
-    const said = cur.turns
-      .filter((t) => t.role === "user")
-      .slice(-10)
-      .map((t) => t.content)
-      .join("\n")
-      .slice(0, 8000);
+    const said =
+      opts?.said ??
+      cur.turns
+        .filter((t) => t.role === "user")
+        .slice(-10)
+        .map((t) => t.content)
+        .join("\n")
+        .slice(0, 8000);
 
     // Write the contract to the page at most once per screen refresh, however fast it streams in.
     let buffer = "";
     let frame = 0;
     const flush = () => {
       frame = 0;
-      if (!buffer) return;
+      if (!buffer || draftAbort.current !== ctl) return;
       const piece = buffer;
       buffer = "";
       update((p) => ({ ...p, draftText: p.draftText + piece }));
@@ -179,8 +182,10 @@ export default function TalkView({ lang }: { lang: LangCode }) {
         userRole: cur.userRole,
         details: flatDetails(cur.details),
         said,
+        extra: opts?.extra,
       },
       (chunk) => {
+        if (draftAbort.current !== ctl) return; // a newer draft or a reset took over
         buffer += chunk;
         if (!frame) frame = requestAnimationFrame(flush);
       },
@@ -188,6 +193,8 @@ export default function TalkView({ lang }: { lang: LangCode }) {
     );
     if (frame) cancelAnimationFrame(frame);
     flush();
+    if (draftAbort.current !== ctl) return; // stopped by Start over or replaced by a newer draft
+    draftAbort.current = null;
 
     const text = sRef.current.draftText;
     const keepPartial = text.length > 200;
@@ -252,6 +259,8 @@ export default function TalkView({ lang }: { lang: LangCode }) {
       const ctl = new AbortController();
       chatAbort.current = ctl;
       const res = await postJson<ConversationReply>("/api/chat", { turns: turns.slice(-MAX_TURNS), state }, ctl.signal);
+      if (chatAbort.current !== ctl) return; // Start over was pressed while waiting
+      chatAbort.current = null;
 
       if (!res.ok) {
         update((p) => {
@@ -302,6 +311,31 @@ export default function TalkView({ lang }: { lang: LangCode }) {
     [generateContract, lang, update],
   );
 
+  /* ---------------- redraft from the Check a contract tab ---------------- */
+
+  const handledRedraft = useRef(0);
+  useEffect(() => {
+    if (!redraft || handledRedraft.current === redraft.id) return;
+    handledRedraft.current = redraft.id;
+    draftAbort.current?.abort();
+    chatAbort.current?.abort();
+    draftAbort.current = null;
+    chatAbort.current = null;
+    const fresh = withItem(
+      { ...INITIAL, contractType: redraft.contractType, userRole: redraft.userRole },
+      {
+        kind: "say",
+        text: "I'm rewriting your contract with the fixes from the loophole check. It will appear on the right.",
+      },
+    );
+    sRef.current = fresh;
+    setS(fresh);
+    void generateContract({
+      extra: redraft.extra,
+      said: "Rewrite of a contract that was checked for loopholes.",
+    });
+  }, [redraft, generateContract]);
+
   /* ---------------- buttons ---------------- */
 
   function onSubmit(e: FormEvent) {
@@ -325,6 +359,8 @@ export default function TalkView({ lang }: { lang: LangCode }) {
   function onReset() {
     draftAbort.current?.abort();
     chatAbort.current?.abort();
+    draftAbort.current = null;
+    chatAbort.current = null;
     sRef.current = INITIAL;
     setS(INITIAL);
     setInput("");

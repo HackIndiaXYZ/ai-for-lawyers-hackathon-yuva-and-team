@@ -204,3 +204,93 @@ export function sanitizeLegalCheck(c: LegalCheck): LegalCheck {
     requirements: c.requirements.map((q) => ({ ...q, sources: validIds(q.sources) })),
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Check a contract                                                    */
+/* ------------------------------------------------------------------ */
+
+export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+export type ImageType = (typeof IMAGE_TYPES)[number];
+
+/** Photos are shrunk in the browser first. These limits keep a request inside Vercel's body limit. */
+export const MAX_IMAGES = 3;
+export const MAX_IMAGE_BASE64 = 1_100_000;
+export const REVIEW_MAX_BYTES = 3_800_000;
+
+export const reviewRequestSchema = z
+  .object({
+    text: z.string().max(60000).default(""),
+    role: z.string().max(200).nullable().default(null),
+    images: z
+      .array(
+        z.object({
+          mediaType: z.enum(IMAGE_TYPES),
+          data: z
+            .string()
+            .min(100)
+            .max(MAX_IMAGE_BASE64)
+            .regex(/^[A-Za-z0-9+/=]+$/),
+        }),
+      )
+      .max(MAX_IMAGES)
+      .default([]),
+  })
+  .refine((v) => v.text.trim().length >= 20 || v.images.length > 0, {
+    message: "Paste the contract text or add a photo.",
+  });
+export type ReviewRequest = z.infer<typeof reviewRequestSchema>;
+
+const lawStatus = z.enum(["not_legal", "unenforceable", "risky", "lawful"]);
+const sourceIds = z.array(z.string()).catch([]);
+
+export const reviewBriefSchema = z.object({
+  kind: z.literal("brief"),
+  type: z.string().catch(""),
+  summary: z.string().catch(""),
+  parties: z.array(z.string()).catch([]),
+  key_terms: z.array(z.object({ label: z.string(), value: z.string() })).catch([]),
+  obligations: z.array(z.object({ party: z.string(), duty: z.string() })).catch([]),
+  unclear: z.array(z.string()).catch([]),
+  legal_notes: z
+    .array(
+      z.object({
+        point: z.string(),
+        status: lawStatus.catch("risky"),
+        consequence: z.string().catch(""),
+        sources: sourceIds,
+      }),
+    )
+    .catch([]),
+});
+export type ReviewBrief = z.infer<typeof reviewBriefSchema>;
+
+export const reviewMetaSchema = z.object({
+  kind: z.literal("meta"),
+  type: z.string().catch(""),
+  safety_score: z.coerce.number().min(0).max(100).catch(50),
+  headline: z.string().catch(""),
+  legal_verdict: z.string().catch(""),
+});
+export type ReviewMeta = z.infer<typeof reviewMetaSchema>;
+
+export const reviewFindingSchema = z.object({
+  kind: z.literal("finding"),
+  severity: z.enum(["high", "medium", "low"]).catch("medium"),
+  title: z.string().catch("Clause to review"),
+  clause: z.string().catch(""),
+  issue: z.string().catch(""),
+  risk: z.string().catch(""),
+  status: lawStatus.catch("risky"),
+  consequence: z.string().catch(""),
+  sources: sourceIds,
+  law: z.string().catch(""),
+  fix: z.string().catch(""),
+});
+export type ReviewFinding = z.infer<typeof reviewFindingSchema>;
+
+export const reviewMissingSchema = z.object({
+  kind: z.literal("missing"),
+  clause: z.string().catch(""),
+  why: z.string().catch(""),
+});
+export type ReviewMissing = z.infer<typeof reviewMissingSchema>;

@@ -39,9 +39,16 @@ function modelFor(tier: AiTier): string {
     : (process.env.ANTHROPIC_MODEL_SMART ?? "claude-sonnet-5-5");
 }
 
+export type AiContentBlock =
+  | { type: "text"; text: string }
+  | {
+      type: "image";
+      source: { type: "base64"; media_type: "image/jpeg" | "image/png" | "image/webp"; data: string };
+    };
+
 export interface AiMessage {
   role: "user" | "assistant";
-  content: string;
+  content: string | AiContentBlock[];
 }
 
 export interface AiRequest {
@@ -52,7 +59,9 @@ export interface AiRequest {
   signal?: AbortSignal;
 }
 
-const API_URL = "https://api.anthropic.com/v1/messages";
+// ANTHROPIC_BASE_URL exists only so the real-AI path can be tested against a local fake server.
+// Leave it unset in production.
+const API_URL = `${process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com"}/v1/messages`;
 const TIMEOUT_MS = 90_000;
 
 /** The API needs the first message to be from the user. */

@@ -57,6 +57,7 @@ export function failureFrom(e: unknown) {
 export async function guarded<T>(
   req: Request,
   schema: ZodType<T>,
+  options: { maxBytes?: number } = {},
 ): Promise<{ ok: true; data: T } | { ok: false; response: NextResponse }> {
   const limit = rateLimit(clientKey(req));
   if (!limit.ok) {
@@ -69,7 +70,7 @@ export async function guarded<T>(
   }
 
   const length = Number(req.headers.get("content-length") ?? "0");
-  if (length > 300_000) {
+  if (length > (options.maxBytes ?? 300_000)) {
     return { ok: false, response: failure("too_large", "That request is too large.", 413, false) };
   }
 

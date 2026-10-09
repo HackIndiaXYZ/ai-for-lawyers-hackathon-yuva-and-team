@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import LawLibrary from "@/components/LawLibrary";
+import CheckView from "@/components/check/CheckView";
 import TalkView from "@/components/talk/TalkView";
+import type { RedraftRequest } from "@/lib/review";
 import { getMode, type ApiMode } from "@/lib/api";
 import { SourceProvider } from "@/components/SourceProvider";
 
@@ -21,19 +23,11 @@ const LANGS: { id: Lang; label: string; name: string }[] = [
   { id: "te", label: "తె", name: "Telugu" },
 ];
 
-function PlaceholderView({ title, text }: { title: string; text: string }) {
-  return (
-    <section className="card">
-      <h2>{title}</h2>
-      <p className="empty">{text}</p>
-    </section>
-  );
-}
-
 export default function AppShell() {
   const [tab, setTab] = useState<Tab>("talk");
   const [lang, setLang] = useState<Lang>("en");
   const [mode, setMode] = useState<ApiMode | "offline" | null>(null);
+  const [redraft, setRedraft] = useState<RedraftRequest | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -102,12 +96,14 @@ export default function AppShell() {
 
         {/* All three panels stay mounted, so a conversation is not lost when you switch tabs. */}
         <div role="tabpanel" id="panel-talk" aria-labelledby="tab-talk" hidden={tab !== "talk"}>
-          <TalkView lang={lang} />
+          <TalkView lang={lang} redraft={redraft} />
         </div>
         <div role="tabpanel" id="panel-check" aria-labelledby="tab-check" hidden={tab !== "check"}>
-          <PlaceholderView
-            title="Check a contract"
-            text="Paste or photograph a contract and Sandhi will brief you on it and find the loopholes. Built in Phase 6."
+          <CheckView
+            onRedraft={(r) => {
+              setRedraft(r);
+              setTab("talk");
+            }}
           />
         </div>
         <div role="tabpanel" id="panel-law" aria-labelledby="tab-law" hidden={tab !== "law"}>

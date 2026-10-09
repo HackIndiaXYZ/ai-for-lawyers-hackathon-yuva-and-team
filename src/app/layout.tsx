@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import "./law.css";
 import "./talk.css";
+import "./check.css";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
