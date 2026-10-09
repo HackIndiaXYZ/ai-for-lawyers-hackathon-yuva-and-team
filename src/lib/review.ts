@@ -38,7 +38,10 @@ export function parseReviewLine(raw: string): ReviewLine | null {
   }
   if (kind === "finding") {
     const r = reviewFindingSchema.safeParse(obj);
-    return r.success ? { kind, value: r.data } : null;
+    if (!r.success) return null;
+    // A finding with neither a quote nor an explanation is noise, not a result.
+    if (!r.data.clause.trim() && !r.data.issue.trim()) return null;
+    return { kind, value: r.data };
   }
   if (kind === "missing") {
     const r = reviewMissingSchema.safeParse(obj);

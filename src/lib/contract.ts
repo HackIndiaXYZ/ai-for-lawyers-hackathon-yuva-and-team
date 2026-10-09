@@ -17,7 +17,9 @@ export interface ContractModel {
 
 const BLANK_RE = /\[\[(?:to be filled:\s*)?(.+?)\]\]/gi;
 const BOLD_RE = /\*\*(.+?)\*\*/g;
-const TRAILING_SOURCES_RE = /\(\s*(?:Source:\s*)?([A-Z]{2,5}-[A-Z0-9]+(?:\s*,\s*[A-Z]{2,5}-[A-Z0-9]+)*)\s*\)\s*$/;
+// Each ID may contain extra hyphens, so an odd ID from the AI (such as "NOT-REAL-99") is still recognised as a
+// citation and then dropped by validIds, instead of leaving the whole "(Source: ...)" text on the page.
+const TRAILING_SOURCES_RE = /\(\s*(?:Source:\s*)?([A-Z]{2,5}-[A-Z0-9-]+(?:\s*,\s*[A-Z]{2,5}-[A-Z0-9-]+)*)\s*\)\s*$/;
 
 /**
  * Splits a trailing "(Source: ICA-74, TPA-106)" or "(STAMP-35)" off a line.

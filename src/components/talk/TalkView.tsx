@@ -351,7 +351,9 @@ export default function TalkView({
     },
     [generateContract, lang, update, voice],
   );
-  sendRef.current = send;
+  useEffect(() => {
+    sendRef.current = send;
+  });
 
   /* ---------------- redraft from the Check a contract tab ---------------- */
 

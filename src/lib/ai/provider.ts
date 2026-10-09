@@ -61,7 +61,20 @@ export interface AiRequest {
 
 // ANTHROPIC_BASE_URL exists only so the real-AI path can be tested against a local fake server.
 // Leave it unset in production.
-const API_URL = `${process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com"}/v1/messages`;
+const OFFICIAL_BASE = "https://api.anthropic.com";
+
+/**
+ * Where requests (and the API key) are sent. Only the official address is used, unless a developer
+ * sets SANDHI_ALLOW_TEST_BASE_URL=1 to point at a fake server in tests. This stops a stray
+ * ANTHROPIC_BASE_URL setting from sending contracts and the key to the wrong place.
+ */
+export function apiBase(): string {
+  const custom = process.env.ANTHROPIC_BASE_URL;
+  if (custom && process.env.SANDHI_ALLOW_TEST_BASE_URL === "1") return custom.replace(/\/+$/, "");
+  return OFFICIAL_BASE;
+}
+
+const apiUrl = () => `${apiBase()}/v1/messages`;
 const TIMEOUT_MS = 90_000;
 
 /** The API needs the first message to be from the user. */
@@ -83,7 +96,7 @@ async function call(req: AiRequest, stream: boolean): Promise<Response> {
 
   let res: Response;
   try {
-    res = await fetch(API_URL, {
+    res = await fetch(apiUrl(), {
       method: "POST",
       headers: {
         "content-type": "application/json",

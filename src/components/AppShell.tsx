@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import LawLibrary from "@/components/LawLibrary";
 import CheckView from "@/components/check/CheckView";
 import VerifyView, { type VerifyPrefill } from "@/components/verify/VerifyView";
@@ -31,6 +31,7 @@ export default function AppShell() {
   const [mode, setMode] = useState<ApiMode | "offline" | null>(null);
   const [redraft, setRedraft] = useState<RedraftRequest | null>(null);
   const [verifyFor, setVerifyFor] = useState<VerifyPrefill | null>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     let alive = true;
@@ -42,9 +43,27 @@ export default function AppShell() {
     };
   }, []);
 
+  // Arrow keys, Home and End move between tabs, as screen-reader and keyboard users expect.
+  function onTabKey(e: KeyboardEvent<HTMLDivElement>) {
+    const i = TABS.findIndex((t) => t.id === tab);
+    let next = -1;
+    if (e.key === "ArrowRight") next = (i + 1) % TABS.length;
+    else if (e.key === "ArrowLeft") next = (i - 1 + TABS.length) % TABS.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = TABS.length - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    const id = TABS[next].id;
+    setTab(id);
+    tabRefs.current[id]?.focus();
+  }
+
   return (
     <SourceProvider>
-      <main className="app">
+      <a className="skip-link" href="#main-content">
+        Skip to the main content
+      </a>
+      <main className="app" id="main-content" tabIndex={-1}>
         {mode === "demo" && (
           <div className="demo-banner" role="status">
             <span className="badge badge-warn">Demo mode</span>
@@ -71,7 +90,7 @@ export default function AppShell() {
                 key={l.id}
                 type="button"
                 aria-pressed={lang === l.id}
-                aria-label={l.name}
+                aria-label={`${l.label} ${l.name}`}
                 onClick={() => setLang(l.id)}
               >
                 {l.label}
@@ -80,7 +99,7 @@ export default function AppShell() {
           </div>
         </header>
 
-        <div className="tabs" role="tablist" aria-label="Sandhi sections">
+        <div className="tabs" role="tablist" aria-label="Sandhi sections" onKeyDown={onTabKey}>
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -90,6 +109,10 @@ export default function AppShell() {
               aria-selected={tab === t.id}
               aria-controls={`panel-${t.id}`}
               className="tab"
+              tabIndex={tab === t.id ? 0 : -1}
+              ref={(el) => {
+                tabRefs.current[t.id] = el;
+              }}
               onClick={() => setTab(t.id)}
             >
               {t.label}
@@ -125,6 +148,26 @@ export default function AppShell() {
 
         <footer className="footer">
           Sandhi is an assistant, not a lawyer. For high-value or disputed matters, speak to an advocate.
+          <details className="privacy">
+            <summary>How Sandhi handles your data</summary>
+            <ul>
+              <li>
+                In demo mode, answers are samples and nothing you type is sent to an AI.
+              </li>
+              <li>
+                When the real AI is on, what you type or say, contracts you paste and photos you add are sent to the
+                AI provider to write the answer. Sandhi&apos;s own server does not keep them: there is no database.
+              </li>
+              <li>
+                Sealed contracts are saved only in this browser, on this device. You can remove each one under
+                &ldquo;Verify a copy&rdquo;.
+              </li>
+              <li>
+                Voice input uses your browser&apos;s speech service. In Chrome and Edge that service may process the
+                audio on the browser maker&apos;s servers. Type instead if that worries you.
+              </li>
+            </ul>
+          </details>
         </footer>
       </main>
     </SourceProvider>

@@ -18,9 +18,11 @@ export default function VerifyView({ prefill, active = true }: { prefill: Verify
   const handled = useRef(0);
 
   // Seals are made and removed on the other tab, so look again every time this tab is opened.
-  useEffect(() => {
+  const [wasActive, setWasActive] = useState(active);
+  if (wasActive !== active) {
+    setWasActive(active);
     if (active) setKept(loadSeals());
-  }, [active, prefill]);
+  }
 
   useEffect(() => {
     if (!prefill || handled.current === prefill.id) return;

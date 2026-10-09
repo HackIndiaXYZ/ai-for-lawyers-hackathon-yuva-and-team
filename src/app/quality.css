@@ -1,0 +1,48 @@
+/* Keyboard, focus and small-screen polish. Kept in one place so it is easy to review. */
+
+:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #fff;
+  color: #000;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+.privacy {
+  margin: 14px auto 0;
+  max-width: 760px;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+.privacy summary {
+  cursor: pointer;
+  min-height: 32px;
+  text-align: center;
+}
+.privacy ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .btn-row.wrap > .btn {
+    flex: 1 1 100%;
+  }
+}

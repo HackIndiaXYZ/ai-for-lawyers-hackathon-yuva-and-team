@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LangCode } from "@/lib/ai/schemas";
 import { LANG_NAME, speak, startListening, voiceSupport, type Listener, type SpeakHandle } from "@/lib/voice";
 
@@ -20,21 +20,30 @@ export function useVoice({ lang, onHeard, onNotice }: VoiceOptions) {
   const [speaking, setSpeaking] = useState(false);
   const [interim, setInterim] = useState("");
   const [voiceOn, setVoiceOnState] = useState(false);
-  const [support, setSupport] = useState({ listen: false, speak: false });
+  // What this browser can do. Nothing is assumed while the server builds the page.
+  const supportKey = useSyncExternalStore(
+    () => () => {},
+    () => {
+      const s = voiceSupport();
+      return `${s.listen ? 1 : 0}${s.speak ? 1 : 0}`;
+    },
+    () => "00",
+  );
+  const support = { listen: supportKey[0] === "1", speak: supportKey[1] === "1" };
 
   const langRef = useRef(lang);
-  langRef.current = lang;
   const heardRef = useRef(onHeard);
-  heardRef.current = onHeard;
   const noticeRef = useRef(onNotice);
-  noticeRef.current = onNotice;
+  // Keep the latest values where the microphone callbacks can read them.
+  useEffect(() => {
+    langRef.current = lang;
+    heardRef.current = onHeard;
+    noticeRef.current = onNotice;
+  });
   const voiceOnRef = useRef(false);
   const listener = useRef<Listener | null>(null);
   const talker = useRef<SpeakHandle | null>(null);
   const noVoiceTold = useRef<string>("");
-
-  // Browser features are only known once the page is in the browser.
-  useEffect(() => setSupport(voiceSupport()), []);
 
   const setVoiceOn = useCallback((on: boolean) => {
     voiceOnRef.current = on;

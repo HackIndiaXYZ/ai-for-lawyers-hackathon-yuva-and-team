@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { postJson } from "@/lib/api";
 import { copyToClipboard, downloadFile, fileSlug } from "@/lib/download";
 import {
@@ -48,11 +48,13 @@ export default function SealPanel(p: Props) {
   const [msg, setMsg] = useState<{ text: string; bad: boolean } | null>(null);
   const [obNote, setObNote] = useState(false);
 
-  // Forget typed answers when the contract itself is replaced.
-  useEffect(() => {
+  // Forget typed answers when a contract starts or finishes being written.
+  const [lastDrafting, setLastDrafting] = useState(drafting);
+  if (lastDrafting !== drafting) {
+    setLastDrafting(drafting);
     setValues({});
     setMsg(null);
-  }, [drafting]);
+  }
 
   if (!drafted || drafting || draftText.length < 40) return null;
 

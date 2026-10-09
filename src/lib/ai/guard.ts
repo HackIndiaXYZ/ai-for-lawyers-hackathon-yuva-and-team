@@ -1,35 +1,26 @@
 import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
-import { AiError } from "./provider";
+import { logEvent, shortHash } from "../log";
+import { dailyBudget, rateLimit } from "../ratelimit";
+import { aiMode, AiError } from "./provider";
 
-/**
- * Basic abuse protection.
- *
- * NOTE: this counter lives in memory, so each Vercel server instance keeps its own count.
- * That is fine for a hackathon and stops runaway loops. Before a real launch, replace it
- * with a shared store (for example Upstash Redis) so the limit holds across instances.
- */
-const buckets = new Map<string, { count: number; resetAt: number }>();
+/** Requests allowed per minute, per visitor, for each route. The AI-heavy routes are the strictest. */
+const LIMITS: Record<string, number> = {
+  "/api/draft": 12,
+  "/api/review": 12,
+  "/api/legal-check": 20,
+  "/api/obligations": 20,
+  "/api/chat": 40,
+};
+const DEFAULT_LIMIT = 40;
 
-export function rateLimit(key: string, limit = 40, windowMs = 60_000): { ok: boolean; retryAfter: number } {
-  const now = Date.now();
-  if (buckets.size > 5000) {
-    for (const [k, b] of buckets) if (b.resetAt < now) buckets.delete(k);
-  }
-  const b = buckets.get(key);
-  if (!b || b.resetAt < now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, retryAfter: 0 };
-  }
-  b.count += 1;
-  return b.count <= limit
-    ? { ok: true, retryAfter: 0 }
-    : { ok: false, retryAfter: Math.ceil((b.resetAt - now) / 1000) };
-}
-
-export function clientKey(req: Request): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  return (fwd?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "anonymous").slice(0, 64);
+/** A visitor's address as one-way hash: enough to count requests, nothing to leak. */
+export async function clientKey(req: Request): Promise<string> {
+  const raw =
+    req.headers.get("x-real-ip") ||
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "anonymous";
+  return shortHash(raw.slice(0, 64));
 }
 
 type FailureBody = {
@@ -49,7 +40,7 @@ export function failureFrom(e: unknown) {
     const retry = e.code === "rate_limited" ? { "retry-after": "20" } : undefined;
     return failure(e.code, e.message, e.status, e.code !== "rate_limited", retry);
   }
-  console.error("Unexpected server error:", e);
+  logEvent("server_error", { error: e instanceof Error ? e.name : "unknown" });
   return failure("server", "Something went wrong on our side. Please try again.", 500);
 }
 
@@ -59,14 +50,35 @@ export async function guarded<T>(
   schema: ZodType<T>,
   options: { maxBytes?: number } = {},
 ): Promise<{ ok: true; data: T } | { ok: false; response: NextResponse }> {
-  const limit = rateLimit(clientKey(req));
+  const route = new URL(req.url).pathname;
+  const who = await clientKey(req);
+  const limit = await rateLimit(`${route}:${who}`, LIMITS[route] ?? DEFAULT_LIMIT);
   if (!limit.ok) {
+    logEvent("rate_limited", { route, visitor: who });
     return {
       ok: false,
       response: failure("rate_limited", "Too many requests. Please wait a moment.", 429, false, {
         "retry-after": String(limit.retryAfter),
       }),
     };
+  }
+
+  // Only real AI calls cost money, so only they count against the daily budget.
+  if (aiMode() === "live" && route !== "/api/status") {
+    const budget = await dailyBudget();
+    if (!budget.ok) {
+      logEvent("daily_cap_reached", { route });
+      return {
+        ok: false,
+        response: failure(
+          "busy",
+          "Sandhi has reached its limit for today. Please try again tomorrow, or ask an advocate to help you now.",
+          503,
+          true,
+          { "retry-after": String(budget.retryAfter) },
+        ),
+      };
+    }
   }
 
   const length = Number(req.headers.get("content-length") ?? "0");

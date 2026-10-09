@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { inlineParts, type ContractModel } from "@/lib/contract";
 import { groupHex, shortCode, type SealRecord } from "@/lib/seal";
 
@@ -20,9 +20,13 @@ function Plain({ text }: { text: string }) {
  * hides everything else, so "Save as PDF" produces only the contract and its seal.
  */
 export default function PrintSheet({ model, seal }: { model: ContractModel; seal: SealRecord | null }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted || typeof document === "undefined") return null;
+  // False while the server builds the page, true once it is running in the browser.
+  const inBrowser = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  if (!inBrowser) return null;
 
   return createPortal(
     <div id="print-root" aria-hidden="true">
