@@ -44,6 +44,8 @@ export const chatStateSchema = z.object({
   drafted: z.boolean().default(false),
   details: z.record(z.string().max(80), z.string().max(500)).default({}),
   docContext: z.string().max(40000).default(""),
+  /** Words from a voice call with the intake agent. Sent once, on the turn that hands the call to Sandhi. */
+  callTranscript: z.string().max(20000).default(""),
 });
 export type ChatState = z.infer<typeof chatStateSchema>;
 

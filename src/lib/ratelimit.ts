@@ -98,11 +98,11 @@ export function dailyCap(): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 2000;
 }
 
-export async function dailyBudget(now = Date.now()): Promise<LimitResult> {
+export async function dailyBudget(now = Date.now(), scope = "ai", cap = dailyCap()): Promise<LimitResult> {
   const day = new Date(now).toISOString().slice(0, 10);
   const secondsLeft = Math.max(60, 86_400 - Math.floor((now % 86_400_000) / 1000));
-  const { count } = await increment(`day:${day}`, 86_400, now);
-  return count <= dailyCap() ? { ok: true, retryAfter: 0 } : { ok: false, retryAfter: secondsLeft };
+  const { count } = await increment(`day:${scope}:${day}`, 86_400, now);
+  return count <= cap ? { ok: true, retryAfter: 0 } : { ok: false, retryAfter: secondsLeft };
 }
 
 /** Test helper: forget every in-memory counter. */

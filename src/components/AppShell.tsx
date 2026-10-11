@@ -6,7 +6,7 @@ import CheckView from "@/components/check/CheckView";
 import VerifyView, { type VerifyPrefill } from "@/components/verify/VerifyView";
 import TalkView from "@/components/talk/TalkView";
 import type { RedraftRequest } from "@/lib/review";
-import { getMode, type ApiMode } from "@/lib/api";
+import { getStatus, type ApiMode } from "@/lib/api";
 import { SourceProvider } from "@/components/SourceProvider";
 
 type Tab = "talk" | "check" | "verify" | "law";
@@ -29,14 +29,17 @@ export default function AppShell() {
   const [tab, setTab] = useState<Tab>("talk");
   const [lang, setLang] = useState<Lang>("en");
   const [mode, setMode] = useState<ApiMode | "offline" | null>(null);
+  const [voiceCall, setVoiceCall] = useState(false);
   const [redraft, setRedraft] = useState<RedraftRequest | null>(null);
   const [verifyFor, setVerifyFor] = useState<VerifyPrefill | null>(null);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     let alive = true;
-    getMode().then((m) => {
-      if (alive) setMode(m ?? "offline");
+    getStatus().then((s) => {
+      if (!alive) return;
+      setMode(s?.mode ?? "offline");
+      setVoiceCall(s?.voiceCall ?? false);
     });
     return () => {
       alive = false;
@@ -125,6 +128,7 @@ export default function AppShell() {
           <TalkView
             lang={lang}
             redraft={redraft}
+            voiceCall={voiceCall}
             onVerify={(seal) => {
               setVerifyFor({ id: Date.now(), seal });
               setTab("verify");

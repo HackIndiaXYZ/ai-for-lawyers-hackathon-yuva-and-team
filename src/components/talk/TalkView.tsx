@@ -12,6 +12,7 @@ import { AdviceCard, LegalAlertCard, LegalCheckPanel, ReviewBanner, type Advice,
 import { BeforeYouSign, ContractPaper } from "./ContractPaper";
 import PrintSheet from "./PrintSheet";
 import { MIN_CONFIDENCE, useVoice } from "./useVoice";
+import VoiceCall, { type LoadClient } from "./VoiceCall";
 import SealPanel from "./SealPanel";
 
 const MAX_TURNS = 24;
@@ -95,10 +96,16 @@ export default function TalkView({
   lang,
   redraft = null,
   onVerify,
+  voiceCall = false,
+  loadCallClient,
 }: {
   lang: LangCode;
   redraft?: RedraftRequest | null;
   onVerify?: (seal: SealRecord) => void;
+  /** True when the server has OmniDimension voice calls set up. */
+  voiceCall?: boolean;
+  /** Tests only: a stand-in for the voice client. */
+  loadCallClient?: LoadClient;
 }) {
   const [s, setS] = useState<Session>(INITIAL);
   // The ref always holds the latest session, so async steps never read stale values.
@@ -144,7 +151,7 @@ export default function TalkView({
   /* ---------------- voice ---------------- */
 
   const voiceNoted = useRef(false);
-  const sendRef = useRef<(text: string, fromVoice?: boolean) => Promise<void>>(async () => {});
+  const sendRef = useRef<(text: string, fromVoice?: boolean, callTranscript?: string) => Promise<boolean>>(async () => false);
 
   const voice = useVoice({
     lang,
@@ -265,15 +272,15 @@ export default function TalkView({
   /* ---------------- conversation ---------------- */
 
   const send = useCallback(
-    async (raw: string, fromVoice = false) => {
+    async (raw: string, fromVoice = false, callTranscript = ""): Promise<boolean> => {
       const text = raw.trim();
       const cur = sRef.current;
-      if (!text || cur.busy || cur.drafting) return;
+      if (!text || cur.busy || cur.drafting) return false;
       if (!fromVoice) voice.stopSpeaking(); // typing takes over from a reply that is still being read
 
       const turns: Turn[] = [...cur.turns, { role: "user", content: text }];
       update((p) => withItem({ ...p, busy: true, turns }, { kind: "you", text }));
-      if (fromVoice && !voiceNoted.current) {
+      if ((fromVoice || callTranscript) && !voiceNoted.current) {
         voiceNoted.current = true;
         update((p) =>
           withItem(p, {
@@ -293,12 +300,13 @@ export default function TalkView({
         drafted: cur.drafted,
         details: flatDetails(cur.details),
         docContext: "",
+        callTranscript,
       };
 
       const ctl = new AbortController();
       chatAbort.current = ctl;
       const res = await postJson<ConversationReply>("/api/chat", { turns: turns.slice(-MAX_TURNS), state }, ctl.signal);
-      if (chatAbort.current !== ctl) return; // Start over was pressed while waiting
+      if (chatAbort.current !== ctl) return false; // Start over was pressed while waiting
       chatAbort.current = null;
 
       if (!res.ok) {
@@ -308,7 +316,7 @@ export default function TalkView({
             ? next
             : withItem(next, { kind: "error", text: res.message, review: res.needsHumanReview });
         });
-        return;
+        return false;
       }
 
       const d = res.data;
@@ -348,12 +356,29 @@ export default function TalkView({
       // "Draft now" only counts once the interview is complete, or after the client insisted.
       const allowed = d.ready || cur.pushback >= 1;
       if (d.action === "draft_now" && allowed) await generateContract();
+      return true;
     },
     [generateContract, lang, update, voice],
   );
   useEffect(() => {
     sendRef.current = send;
   });
+
+  /* ---------------- a finished voice call ---------------- */
+
+  /** Gives the call to Sandhi's own checks. Returns true once Sandhi has answered, so the call can be cleared. */
+  const useCall = useCallback(
+    async (transcript: string): Promise<boolean> => {
+      const cur = sRef.current;
+      if (cur.busy || cur.drafting) {
+        showNotice("One moment. I am still working on your last message.");
+        return false;
+      }
+      voice.cancelAll();
+      return send("I just finished a voice call. Please use what I said in it.", false, transcript);
+    },
+    [send, showNotice, voice],
+  );
 
   /* ---------------- redraft from the Check a contract tab ---------------- */
 
@@ -564,6 +589,14 @@ export default function TalkView({
       </section>
 
       <div className="stack">
+        <VoiceCall
+          available={voiceCall}
+          lang={lang}
+          onStart={() => voice.cancelAll()}
+          onUse={useCall}
+          loadClient={loadCallClient}
+        />
+
         <section className="card" aria-label="Contract controls">
           <div className="controls">
             <label className="field">

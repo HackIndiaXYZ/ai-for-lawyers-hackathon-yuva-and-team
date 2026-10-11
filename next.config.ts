@@ -9,11 +9,14 @@ const isProd = process.env.NODE_ENV === "production";
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  // blob: lets the voice-call library start its audio processor.
+  `script-src 'self' 'unsafe-inline' blob:${isProd ? "" : " 'unsafe-eval'"}`,
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  // The voice call connects straight from the browser to OmniDimension's own servers.
+  `connect-src 'self' wss://omnidim.io wss://*.omnidim.io${process.env.SANDHI_CSP_CONNECT_EXTRA ? " " + process.env.SANDHI_CSP_CONNECT_EXTRA : ""}`,
   "media-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

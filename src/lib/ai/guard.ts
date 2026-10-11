@@ -11,6 +11,7 @@ const LIMITS: Record<string, number> = {
   "/api/legal-check": 20,
   "/api/obligations": 20,
   "/api/chat": 40,
+  "/api/voice/session": 4,
 };
 const DEFAULT_LIMIT = 40;
 
@@ -64,7 +65,7 @@ export async function guarded<T>(
   }
 
   // Only real AI calls cost money, so only they count against the daily budget.
-  if (aiMode() === "live" && route !== "/api/status") {
+  if (aiMode() === "live" && route !== "/api/status" && !route.startsWith("/api/voice")) {
     const budget = await dailyBudget();
     if (!budget.ok) {
       logEvent("daily_cap_reached", { route });

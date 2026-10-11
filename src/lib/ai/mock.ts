@@ -3,6 +3,7 @@
  * download and voice flow be tested and shown before an API key is added.
  */
 
+import { clientWords } from "../callTranscript";
 import { guessType } from "../law";
 import {
   STAGES,
@@ -196,8 +197,10 @@ function summaryOf(details: Record<string, string>, type: string | null): string
 export function mockConversation(req: ChatRequest): ConversationReply {
   const { turns, state } = req;
   const userTurns = turns.filter((t) => t.role === "user");
-  const last = userTurns[userTurns.length - 1]?.content ?? "";
-  const all = userTurns.map((t) => t.content).join(" ");
+  // After a voice call, read what the client said in the call as if they had just typed it.
+  const callWords = state.callTranscript ? clientWords(state.callTranscript) : "";
+  const last = [callWords, userTurns[userTurns.length - 1]?.content ?? ""].filter(Boolean).join(" ");
+  const all = [callWords, ...userTurns.map((t) => t.content)].filter(Boolean).join(" ");
   const lower = last.toLowerCase();
 
   const type = state.contractType ?? guessType(all);

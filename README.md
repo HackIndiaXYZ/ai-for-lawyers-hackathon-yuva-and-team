@@ -79,6 +79,8 @@ All settings are in `env.example`. The important ones:
 | `ANTHROPIC_API_KEY` | Turns on the real AI. Empty = demo mode |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Makes the rate limit hold across all servers |
 | `SANDHI_DAILY_AI_CAP` | Most real-AI requests per day (default 2000) |
+| `OMNIDIM_API_KEY` / `OMNIDIM_AGENT_ID` | Turns on "Talk it out on a call" (see `docs/OMNIDIMENSION_AGENT.md`) |
+| `SANDHI_DAILY_VOICE_CAP` | Most voice calls per day (default 40) |
 
 ## Privacy
 
@@ -87,6 +89,7 @@ There is no database. In live mode, what you type or say, contracts you paste an
 ## Limits worth knowing
 
 - PDF and Word uploads are not supported yet: paste the text or add photos.
+- Voice calls (optional) use an OmniDimension agent that only asks questions. Sandhi's own checks read the transcript afterwards. Calls spend OmniDimension credits.
 - Voice uses the browser's built-in voice and works best in Chrome, Edge and Safari. Hindi and Telugu voices depend on the device.
 - The seal proves the words are unchanged. It is not a signature, an e-stamp or a registration.
 - The law library is a summary and is not updated live.
