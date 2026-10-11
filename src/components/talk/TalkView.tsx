@@ -10,6 +10,7 @@ import type { ChatState, ConversationReply, LangCode, LegalCheck, Stage, Turn } 
 import DetailsCard, { InterviewProgress, type Detail } from "./DetailsCard";
 import { AdviceCard, LegalAlertCard, LegalCheckPanel, ReviewBanner, type Advice, type Flag, type LegalState } from "./cards";
 import { BeforeYouSign, ContractPaper } from "./ContractPaper";
+import ComplianceCard from "./ComplianceCard";
 import PrintSheet from "./PrintSheet";
 import { MIN_CONFIDENCE, useVoice } from "./useVoice";
 import VoiceCall, { type LoadClient } from "./VoiceCall";
@@ -643,6 +644,7 @@ export default function TalkView({
           onToggleWhy={setShowWhy}
         />
         <LegalCheckPanel legal={s.legal} />
+        <ComplianceCard contractType={s.contractType} draftText={s.draftText} drafting={s.drafting} />
         <BeforeYouSign model={model} />
         <SealPanel
           draftText={s.draftText}

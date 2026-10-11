@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ACT_ORDER } from "@/data/lawLibrary";
+import { PROVENANCE, formatChecked } from "@/data/provenance";
 import { ACTS, LAW_LIBRARY, fullReference, type LawEntry } from "@/lib/law";
 import { SourceChip } from "@/components/SourceProvider";
 
@@ -90,6 +91,15 @@ export default function LawLibrary() {
                 <p>
                   <strong>What can happen:</strong> {e.consequence}
                 </p>
+                {PROVENANCE[e.id] && (
+                  <p className="law-checked">
+                    Wording cross-checked on {formatChecked(PROVENANCE[e.id])} against{" "}
+                    <a href={PROVENANCE[e.id].url} target="_blank" rel="noopener noreferrer">
+                      {PROVENANCE[e.id].where}
+                    </a>
+                    . Confirm on India Code before relying on it.
+                  </p>
+                )}
               </article>
             ))}
           </div>

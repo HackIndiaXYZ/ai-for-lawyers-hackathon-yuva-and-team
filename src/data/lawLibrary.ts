@@ -1,5 +1,5 @@
 /**
- * Sandhi law library: 48 curated provisions of Indian law.
+ * Sandhi law library: 53 curated provisions of Indian law.
  *
  * IMPORTANT: this is a summary, not the statute book, and it is not updated live.
  * Entries with verify: true were written from general knowledge and have NOT been
@@ -31,7 +31,7 @@ export interface LawEntry {
 /** Acts in the order they are shown in the Law library tab. */
 export const ACT_ORDER = [
   "ICA", "CON", "TPA", "REG", "STAMP", "TRC", "MTA", "ITA", "NIA", "ARB", "CPC",
-  "LIM", "SRA", "CPA", "BNS", "BSA", "CRA", "SGA", "MVA", "GRA", "LAB", "DPDP",
+  "LIM", "SRA", "CPA", "BNS", "BSA", "CRA", "SGA", "MVA", "GRA", "SSC", "LAB", "MSMED", "TAX", "DPDP",
 ] as const;
 
 export const ACTS: Record<string, ActInfo> = {
@@ -58,7 +58,10 @@ export const ACTS: Record<string, ActInfo> = {
   SGA: { full: "Sale of Goods Act 1930", chip: "Sale of Goods Act" },
   MVA: { full: "Motor Vehicles Act 1988", chip: "MV Act" },
   GRA: { full: "Payment of Gratuity Act 1972", chip: "Gratuity Act" },
+  SSC: { full: "Code on Social Security 2020", chip: "Social Security Code" },
   LAB: { full: "Labour codes", chip: "Labour codes" },
+  MSMED: { full: "Micro, Small and Medium Enterprises Development Act 2006", chip: "MSMED Act" },
+  TAX: { full: "Income-tax and GST law", chip: "Tax law" },
   DPDP: { full: "Digital Personal Data Protection Act 2023", chip: "DPDP Act" },
 };
 
@@ -199,9 +202,9 @@ const RAW: Raw[] = [
   ],
   [
     "TPA-108", "s.108", "Landlord and tenant duties",
-    "The landlord must disclose known material defects and allow quiet possession. The tenant must pay rent, use the property properly and not damage it. Ordinary wear and tear is not the tenant's liability.",
+    "The landlord must disclose known material defects and allow quiet possession. The tenant must pay rent, use the property properly, keep it in good condition and give possession back when the lease ends. Ordinary wear and tear is not the tenant's liability.",
     "Charging a tenant for old damage, or entering at will, can breach the landlord's own duties.",
-    "R", ["repair", "damage", "maintenance", "defect", "quiet", "wear", "painting", "entry", "enter"], true,
+    "R", ["repair", "damage", "maintenance", "defect", "quiet", "wear", "painting", "entry", "enter"],
   ],
   [
     "TPA-54", "s.54", "Sale of immovable property",
@@ -354,15 +357,15 @@ const RAW: Raw[] = [
 
   // ---------------- Employment and data ----------------
   [
-    "GRA-4", "s.4", "Gratuity",
-    "An employee who completes five years of continuous service is entitled to gratuity on retirement, resignation or death (the five-year rule does not apply on death or disability). The right cannot be signed away. The labour codes may now restate this, so check the current provision.",
-    "A clause denying or waiving gratuity is ineffective.",
+    "GRA-4", "s.4 (now restated in the Code on Social Security 2020, ss.53 to 58)", "Gratuity",
+    "An employee who completes five years of continuous service is entitled to gratuity on retirement, resignation or death (the five-year rule does not apply on death or disability). The amount is 15 days' wages for each completed year. The right cannot be signed away. Sources disagree on whether the 1972 Act or the Social Security Code now governs, so the exact rule must be confirmed.",
+    "A clause denying or waiving gratuity is ineffective. Do not state a rupee ceiling or a fixed-term rule in a contract without checking the current notification.",
     "E", ["gratuity", "full and final", "resign", "notice period"], true,
   ],
   [
     "LAB-CODES", "Codes on Wages, Industrial Relations, Social Security and OSH", "The new labour codes",
-    "Parliament consolidated 29 labour laws into four codes. They were reported to come into force in November 2025, so older Acts such as the Minimum Wages Act, Payment of Wages Act and EPF Act may now be replaced or restated.",
-    "Check which provision applies today before relying on older section numbers or on a salary below the notified minimum wage.",
+    "Parliament consolidated 29 labour laws into four codes. The Central Government notified all four to take effect on 21 November 2025, though state rules and some provisions are still being put in place, so older Acts such as the Minimum Wages Act, Payment of Wages Act and EPF Act may now be restated.",
+    "Check which provision applies today before relying on older section numbers, and make sure pay is not below the notified minimum wage.",
     "E", ["wage", "wages", "salary", "minimum wage", "epf", "provident", "esi", "overtime", "leave", "retrench", "bonus", "ctc"], true,
   ],
   [
@@ -370,6 +373,37 @@ const RAW: Raw[] = [
     "Personal data may be processed only for lawful purposes with the person's consent or another permitted ground, and the organisation handling it must keep it secure and use it only for the stated purpose. The rules under the Act are being phased in.",
     "Careless handling of customer or employee data can attract heavy penalties under the Act.",
     "NFE", ["personal data", "customer data", "aadhaar", "employee data", "share data", "data protection"], true,
+  ],
+  // ---------------- Added in phase 11 ----------------
+  [
+    "TPA-111", "s.111", "How a lease ends",
+    "A lease ends when the term runs out, on a valid notice, when the tenant surrenders it, or when the landlord forfeits it for a breach after giving written notice of intention to do so.",
+    "A landlord who locks out a tenant, or ends a lease without the required notice, risks the termination being invalid.",
+    "R", ["forfeit", "forfeiture", "terminate", "lock-in", "lock in", "surrender", "expiry", "end of term"], true,
+  ],
+  [
+    "CRA-19", "s.19", "Copyright can only be assigned in a signed writing",
+    "An assignment of copyright is valid only if it is in writing and signed by the person giving it. It must identify the work and the rights assigned, and state how long it lasts and where it applies. If no period is stated it is treated as five years, and if no territory is stated it covers India only.",
+    "A verbal promise to hand over the rights, or an assignment that is vague about work, rights, period or territory, can leave the client without the ownership it paid for.",
+    "FE", ["assign", "assignment", "copyright", "ownership", "intellectual property", "work product", "deliverable", "rights"],
+  ],
+  [
+    "SSC-53", "s.53 and related sections", "Gratuity under the Social Security Code",
+    "The Code on Social Security 2020 carries gratuity forward: five years of service for permanent employees, and a pro-rata gratuity for fixed-term employees after one year of service. Central rules and some notifications were still pending when this was checked.",
+    "A contract should not promise less than the statute, and should not state figures that depend on notifications not yet issued.",
+    "E", ["gratuity", "fixed term", "fixed-term", "contract employee", "resign"], true,
+  ],
+  [
+    "MSMED-15", "ss.15 and 16", "Late payment to micro and small suppliers",
+    "If the supplier is a registered micro or small enterprise, the buyer must pay within the agreed time, which cannot be more than 45 days. Delay attracts compound interest at three times the bank rate.",
+    "A payment term longer than 45 days, or no interest on delay, does not bind a registered micro or small supplier.",
+    "F", ["msme", "udyam", "micro enterprise", "small enterprise", "payment terms", "net 60", "net 90", "late payment"], true,
+  ],
+  [
+    "TAX-TDS", "Income-tax law and GST law", "Tax on fees and rent",
+    "Payments such as rent, professional fees and salary can require tax to be deducted at source, and a freelancer or business above the threshold may have to charge GST. The Income-tax Act 2025 replaced the 1961 Act for the tax year starting 1 April 2026, so section numbers have changed.",
+    "A contract that is silent on who bears tax and GST invites disputes. Confirm the current rates and sections with a chartered accountant.",
+    "RFE", ["tds", "gst", "tax", "invoice", "professional fees", "deduct", "pan", "salary", "rent"], true,
   ],
 ];
 

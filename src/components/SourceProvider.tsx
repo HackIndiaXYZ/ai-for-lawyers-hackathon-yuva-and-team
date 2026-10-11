@@ -1,5 +1,6 @@
 "use client";
 
+import { PROVENANCE, formatChecked } from "@/data/provenance";
 import {
   createContext,
   useContext,
@@ -98,6 +99,12 @@ export function SourceProvider({ children }: { children: ReactNode }) {
             <p>{entry.summary}</p>
             <h3>What can happen</h3>
             <p>{entry.consequence}</p>
+            {PROVENANCE[entry.id] && (
+              <p className="muted">
+                Wording cross-checked on {formatChecked(PROVENANCE[entry.id])} against {PROVENANCE[entry.id].where}.
+                Confirm on India Code before relying on it.
+              </p>
+            )}
             <div className="src-actions">
               <a href={INDIA_CODE_URL} target="_blank" rel="noopener noreferrer" className="btn">
                 Read the official text on India Code

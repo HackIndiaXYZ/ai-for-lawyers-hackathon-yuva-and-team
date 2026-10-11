@@ -68,7 +68,7 @@ npm test             # 68 unit tests: seal, contract format, rate limit, AI safe
 npm run build        # production build
 ```
 
-Before any demo, also work through `docs/LAW_VERIFICATION.md` (13 provisions still to be checked against India Code).
+Before any demo, also work through `docs/LAW_VERIFICATION.md` (16 provisions still to be checked against India Code). `docs/RULEBOOK.md` explains the Indian law checklist that runs on every draft.
 
 ## Settings
 

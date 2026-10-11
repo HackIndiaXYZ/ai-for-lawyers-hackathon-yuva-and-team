@@ -1,4 +1,5 @@
 import { CONTRACT_TYPES, guessType, libraryText, relevant } from "../law";
+import { rulebookPrompt } from "../rulebook";
 import { LANG_NAMES, type ChatState, type DraftRequest } from "./schemas";
 
 /**
@@ -59,6 +60,7 @@ What the user said: <<<DATA ${unfence(req.said || "(nothing yet; use placeholder
 ${req.extra}
 LAW LIBRARY (use these IDs when citing):
 ${lib}
+${rulebookPrompt(req.contractType)}
 LEGALITY RULES: Do not include any clause that is void or unlawful under Indian law, for example a non-compete that applies after employment or a contract ends (s.27), a clause barring all court remedies or making one party's decision final (s.28, s.12(5) of the Arbitration Act), or a penalty beyond reasonable compensation (s.74). If the client asked for such a clause, leave it out, replace it with the nearest lawful protection, and say so in the BEFORE YOU SIGN notes together with the law that blocks it.
 STRICT FORMAT (plain text, English, no other markdown):
 Line 1: TITLE: <agreement title>

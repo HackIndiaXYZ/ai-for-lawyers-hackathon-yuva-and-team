@@ -3,6 +3,7 @@
  * download and voice flow be tested and shown before an API key is added.
  */
 
+import { freelanceDraft, ndaDraft, employmentDraft, saleDraft, type Fill } from "./mockDrafts";
 import { clientWords } from "../callTranscript";
 import { guessType } from "../law";
 import {
@@ -327,7 +328,7 @@ The Tenant has paid a refundable security deposit of ${v(d, "security_deposit", 
 The Landlord may enter the Premises on [[to be filled: hours of notice]] hours' prior notice at a reasonable time, or at once in an emergency.
 > why: Entry at any time can be challenged as against privacy and public policy. (Source: CON-21)
 ## 7. Termination and notice
-Either party may end the tenancy by giving [[to be filled: notice period]] days' written notice. If the Tenant leaves before the lock-in ends, compensation shall be limited to the Landlord's reasonable proven loss.
+Either party may end the tenancy by giving [[to be filled: notice period]] days' written notice. If the Tenant leaves before the lock-in ends, compensation shall be limited to the Landlord's reasonable proven loss. When the tenancy ends the Tenant shall vacate and hand over possession of the Premises in the condition received, subject to normal wear and tear.
 > why: A tenant cannot be told to leave immediately without notice, and a harsh early-exit sum can be cut down by a court. (Source: TPA-106, ICA-74)
 ## 8. Dispute resolution
 Any dispute shall be referred to a sole arbitrator appointed by mutual consent, seated in Hyderabad, under the Arbitration and Conciliation Act 1996.
@@ -343,53 +344,19 @@ SIGN: Tenant, ${v(d, "tenant_name", "tenant's name")}
 SIGN: Witness 1
 SIGN: Witness 2
 ===BEFORE YOU SIGN===
-- Pay stamp duty at Telangana's current rate and use stamp paper of the right value. Unstamped agreements cannot be relied on in court. (STAMP-35)
-- If the term is more than 11 months, register the agreement; otherwise it may not hold up as a lease. (REG-17)
+- Pay stamp duty at the current Telangana rate for a lease and use stamp paper or an e-stamp of that value before anyone signs. Unstamped agreements cannot be relied on in court. (STAMP-35)
+- A lease of more than one year must be made by a registered instrument and presented for registration within four months of signing; otherwise it may not hold up as a lease. (TPA-107, REG-17, REG-23)
+- Ask an advocate whether the Telangana Buildings (Lease, Rent and Eviction) Control Act 1960 covers this building, because it can limit eviction and rent. (TRC-10)
+- Tax may have to be deducted from rent in some cases. Ask a chartered accountant. (TAX-TDS)
 - Both parties should sign with valid ID, or e-sign through a valid Aadhaar e-Sign provider. (ITA-10A)
 - Fill in every highlighted blank before signing.`;
   }
 
-  // Shorter sample for the other four types.
-  const [partyA, partyB] =
-    type === "Freelance Services Agreement" ? ["client_name", "freelancer_name"]
-    : type === "Non-Disclosure Agreement" ? ["disclosing_party", "receiving_party"]
-    : type === "Employment Agreement" ? ["employer_name", "employee_name"]
-    : ["seller_name", "buyer_name"];
-  const money = type === "Freelance Services Agreement" ? v(d, "fee", "fee")
-    : type === "Employment Agreement" ? v(d, "salary", "salary")
-    : type === "Sale of Movable Property" ? v(d, "price", "price")
-    : "[[to be filled: amount, if any]]";
-  const lines = [
-    `TITLE: ${type.toUpperCase()}`,
-    `This Agreement is made on [[to be filled: date]] at Hyderabad, Telangana, between ${v(d, partyA, "first party's full name and address")} and ${v(d, partyB, "second party's full name and address")}.`,
-    `## 1. Purpose and scope`,
-    `This Agreement records the ${type.toLowerCase()} between the parties on the terms set out below: [[to be filled: scope or purpose]].`,
-    `> why: An agreement must have a clear object and value, or a court may treat it as void or too vague. (Source: ICA-10, ICA-29)`,
-    `## 2. Payment or price`,
-    `The agreed amount is ${money}, payable as follows: [[to be filled: payment schedule]].`,
-    `> why: Clear amounts and dates make the agreement enforceable and the remedy for late payment certain. (Source: ICA-73)`,
-    `## 3. Term and termination`,
-    `This Agreement runs from [[to be filled: start date]] until [[to be filled: end date or event]]. Either party may end it by giving [[to be filled: notice period]] days' written notice.`,
-    `> why: Notice periods and exit terms prevent disputes about walking away. (Source: ICA-74)`,
-    `## 4. Confidentiality and ownership`,
-    `Each party shall keep the other's confidential information private. Ownership of any work or item is as stated here: [[to be filled: who owns what]].`,
-    `> why: Ownership must be written down, and confidentiality survives even where a non-compete cannot. (Source: CRA-17, ICA-27)`,
-    `## 5. Dispute resolution and governing law`,
-    `Disputes shall go to a sole arbitrator appointed by mutual consent, seated in Hyderabad, under the Arbitration and Conciliation Act 1996. The laws of India apply and the courts at Hyderabad, Telangana have jurisdiction.`,
-    `> why: Arbitration is allowed, but a clause making one side's decision final is void. (Source: ARB-7, ARB-12, ICA-28)`,
-    `## 6. General`,
-    `This is the entire agreement. If any part is invalid, the rest remains in force.`,
-    `> why: Written terms generally prevail over oral promises. (Source: BSA-94)`,
-    `SIGN: First party`,
-    `SIGN: Second party`,
-    `SIGN: Witness 1`,
-    `SIGN: Witness 2`,
-    `===BEFORE YOU SIGN===`,
-    `- Pay stamp duty at Telangana's current rate. (STAMP-35)`,
-    `- Sign with valid ID, or e-sign through a valid Aadhaar e-Sign provider. (ITA-10A)`,
-    `- Fill in every highlighted blank before signing.`,
-  ];
-  return lines.join("\n");
+  const f: Fill = (key, what) => v(d, key, what);
+  if (type === "Freelance Services Agreement") return freelanceDraft(f);
+  if (type === "Non-Disclosure Agreement") return ndaDraft(f);
+  if (type === "Employment Agreement") return employmentDraft(f);
+  return saleDraft(f);
 }
 
 export async function* mockDraftStream(req: DraftRequest): AsyncGenerator<string> {
