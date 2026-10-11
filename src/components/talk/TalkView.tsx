@@ -11,6 +11,7 @@ import DetailsCard, { InterviewProgress, type Detail } from "./DetailsCard";
 import { AdviceCard, LegalAlertCard, LegalCheckPanel, ReviewBanner, type Advice, type Flag, type LegalState } from "./cards";
 import { BeforeYouSign, ContractPaper } from "./ContractPaper";
 import ComplianceCard from "./ComplianceCard";
+import { clientWords } from "@/lib/callTranscript";
 import PrintSheet from "./PrintSheet";
 import { MIN_CONFIDENCE, useVoice } from "./useVoice";
 import VoiceCall, { type LoadClient } from "./VoiceCall";
@@ -376,9 +377,30 @@ export default function TalkView({
         return false;
       }
       voice.cancelAll();
-      return send("I just finished a voice call. Please use what I said in it.", false, transcript);
+      const answered = await send("I just finished a voice call. Please use what I said in it.", false, transcript);
+      if (!answered) return false;
+
+      // The client asked for the agreement by finishing the call, so write it now, leaving blanks for anything
+      // that was not said. If Sandhi could not tell what kind of contract this is, it has already asked.
+      const after = sRef.current;
+      if (after.contractType && !after.drafting && !after.drafted) {
+        update((p) =>
+          withItem(p, {
+            kind: "say",
+            text: "I have what you said on the call. I'm drafting your agreement now, and anything you did not mention is left as a highlighted blank for you to fill in.",
+          }),
+        );
+        const said = [
+          clientWords(transcript),
+          ...after.turns.filter((t) => t.role === "user").slice(-6).map((t) => t.content),
+        ]
+          .join("\n")
+          .slice(0, 8000);
+        await generateContract({ said });
+      }
+      return true;
     },
-    [send, showNotice, voice],
+    [generateContract, send, showNotice, update, voice],
   );
 
   /* ---------------- redraft from the Check a contract tab ---------------- */
