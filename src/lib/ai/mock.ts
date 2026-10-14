@@ -5,6 +5,7 @@
 
 import { freelanceDraft, ndaDraft, employmentDraft, saleDraft, type Fill } from "./mockDrafts";
 import { clientWords } from "../callTranscript";
+import { readCall } from "../callReader";
 import { guessType } from "../law";
 import {
   STAGES,
@@ -206,7 +207,9 @@ export function mockConversation(req: ChatRequest): ConversationReply {
 
   const type = state.contractType ?? guessType(all);
   const role = state.userRole ?? guessRole(all, type);
-  const newFields = extractFields(last, type);
+  const typed = extractFields(last, type);
+  const fromCall = state.callTranscript ? readCall(state.callTranscript, type, role) : [];
+  const newFields = [...typed.filter((f) => !fromCall.some((c) => c.key === f.key) && !(fromCall.length > 0 && f.key === "client_name")), ...fromCall];
   const merged = { ...state.details };
   newFields.forEach((f) => (merged[f.key] = f.value));
   const missing = (type ? (REQUIRED[type] ?? []) : [])
@@ -312,7 +315,7 @@ This Agreement is made on [[to be filled: date]] at Hyderabad, Telangana, betwee
 The Landlord lets to the Tenant the residential property at ${v(d, "property_address", "full property address")} (the **Premises**) for residential use only.
 > why: A lease is defined by what it does, not what it is called, so the property and use must be clear. (Source: TPA-105)
 ## 2. Term
-The tenancy begins on ${v(d, "start_date", "start date")} and runs for [[to be filled: term, for example 11 months]].
+The tenancy begins on ${v(d, "start_date", "start date")} and runs for ${v(d, "term", "term, for example 11 months")}.
 > why: A lease longer than one year must be registered, which is why many residential agreements run for 11 months. (Source: TPA-107, REG-17)
 ## 3. Rent
 The Tenant shall pay rent of ${v(d, "monthly_rent", "monthly rent")} per month, on or before [[to be filled: due date]] of each month. Rent may be revised only by written agreement of both parties.
@@ -328,7 +331,7 @@ The Tenant has paid a refundable security deposit of ${v(d, "security_deposit", 
 The Landlord may enter the Premises on [[to be filled: hours of notice]] hours' prior notice at a reasonable time, or at once in an emergency.
 > why: Entry at any time can be challenged as against privacy and public policy. (Source: CON-21)
 ## 7. Termination and notice
-Either party may end the tenancy by giving [[to be filled: notice period]] days' written notice. If the Tenant leaves before the lock-in ends, compensation shall be limited to the Landlord's reasonable proven loss. When the tenancy ends the Tenant shall vacate and hand over possession of the Premises in the condition received, subject to normal wear and tear.
+Either party may end the tenancy by giving ${v(d, "notice_period", "notice period, for example 30 days")} written notice. If the Tenant leaves before the lock-in ends, compensation shall be limited to the Landlord's reasonable proven loss. When the tenancy ends the Tenant shall vacate and hand over possession of the Premises in the condition received, subject to normal wear and tear.
 > why: A tenant cannot be told to leave immediately without notice, and a harsh early-exit sum can be cut down by a court. (Source: TPA-106, ICA-74)
 ## 8. Dispute resolution
 Any dispute shall be referred to a sole arbitrator appointed by mutual consent, seated in Hyderabad, under the Arbitration and Conciliation Act 1996.
