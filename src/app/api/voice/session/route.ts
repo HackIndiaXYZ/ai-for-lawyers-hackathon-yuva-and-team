@@ -6,7 +6,10 @@ import { createVoiceSession, omnidimConfigured, VoiceError } from "@/lib/omnidim
 import { dailyBudget } from "@/lib/ratelimit";
 
 const LANGUAGES = { en: "English", hi: "Hindi", te: "Telugu" } as const;
-const requestSchema = z.object({ lang: z.enum(["en", "hi", "te"]).default("en") });
+const requestSchema = z.object({
+  lang: z.enum(["en", "hi", "te"]).default("en"),
+  purpose: z.enum(["intake", "help"]).default("intake"),
+});
 
 /** Most voice calls Sandhi will start in a day. Calls use paid credits, so this is kept small. */
 function dailyVoiceCap(): number {
@@ -19,7 +22,7 @@ export async function POST(req: Request) {
   const g = await guarded(req, requestSchema);
   if (!g.ok) return g.response;
 
-  if (!omnidimConfigured()) {
+  if (!omnidimConfigured(g.data.purpose)) {
     return failure("not_configured", "Voice calls are not set up yet. You can still type or use the microphone button.", 503, false);
   }
 
@@ -32,7 +35,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const session = await createVoiceSession({ language: LANGUAGES[g.data.lang], signal: req.signal });
+    const session = await createVoiceSession({ language: LANGUAGES[g.data.lang], purpose: g.data.purpose, signal: req.signal });
     // Only the one-conversation address goes to the browser. The key and token stay here.
     return NextResponse.json({ ok: true, mode: "live", data: session, needsHumanReview: false });
   } catch (e) {

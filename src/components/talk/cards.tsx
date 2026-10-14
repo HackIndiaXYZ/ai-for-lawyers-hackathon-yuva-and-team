@@ -161,11 +161,11 @@ export function LegalCheckPanel({ legal }: { legal: LegalState }) {
 }
 
 /** The human-review fallback: shown whenever the automatic check is not enough on its own. */
-export function ReviewBanner({ show }: { show: boolean }) {
+export function ReviewBanner({ show, action = "before you sign" }: { show: boolean; action?: string }) {
   if (!show) return null;
   return (
     <div className="review-banner" role="note">
-      <strong>Please have an advocate review this before you sign.</strong> Sandhi is an
+      <strong>Please have an advocate review this {action}.</strong> Sandhi is an
       assistant, not a lawyer, and this result needs a human check.
     </div>
   );

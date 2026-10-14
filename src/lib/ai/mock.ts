@@ -7,43 +7,18 @@ import { freelanceDraft, ndaDraft, employmentDraft, saleDraft, type Fill } from 
 import { clientWords } from "../callTranscript";
 import { readCall } from "../callReader";
 import { guessType } from "../law";
+import { ASK_TYPE, nextStep } from "./interview";
 import {
-  STAGES,
   type ChatRequest,
   type ConversationReply,
   type DraftRequest,
   type LegalCheck,
   type Obligation,
-  type Stage,
 } from "./schemas";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ---------------- conversation ---------------- */
-
-const QUESTIONS: Record<Exclude<Stage, "confirm" | "terms">, string> = {
-  background:
-    "Thank you. First, tell me the background: why is this needed, how do you know the other person, and is anything already agreed or in writing?",
-  parties:
-    "Got it. Now the parties: what are the full legal names and addresses of both sides, and what is your own role?",
-  "what-ifs":
-    "Now the uncomfortable part. What if payment is late, someone wants to leave early, or something gets damaged? Who bears which cost?",
-  "special conditions":
-    "Almost there. Is there anything unusual to include or leave out, such as renewal, witnesses, or who keeps the original?",
-};
-
-const TERMS_QUESTION: Record<string, string> = {
-  "Residential Rent Agreement":
-    "Now the key terms: the monthly rent, due date, security deposit, start date, how long it runs, and the notice period.",
-  "Freelance Services Agreement":
-    "Now the key terms: the exact work to be delivered, the fee and payment schedule, deadlines, and how many revisions are included.",
-  "Non-Disclosure Agreement":
-    "Now the key terms: the purpose of sharing, what counts as confidential, how long it lasts, and what must be returned or destroyed.",
-  "Employment Agreement":
-    "Now the key terms: the role, salary and its parts, start date, probation, notice period, and work location.",
-  "Sale of Movable Property":
-    "Now the key terms: the item and its identifying details, the price, any advance, the payment mode, and the delivery date.",
-};
 
 const REQUIRED: Record<string, { key: string; label: string }[]> = {
   "Residential Rent Agreement": [
@@ -207,7 +182,16 @@ export function mockConversation(req: ChatRequest): ConversationReply {
 
   const type = state.contractType ?? guessType(all);
   const role = state.userRole ?? guessRole(all, type);
-  const typed = extractFields(last, type);
+  const lastQuestion = [...turns].reverse().find((t) => t.role === "assistant")?.content ?? "";
+  const asked = turns.filter((t) => t.role === "assistant").map((t) => t.content).join("\n");
+  // A short typed answer is read against the question that was just asked, the same way a call is read.
+  const pairText = `Voice agent: ${lastQuestion}\nClient: ${userTurns[userTurns.length - 1]?.content ?? ""}`;
+  const extracted = extractFields(last, type);
+  // Anything the keyword reader already found wins; the question-and-answer reader only adds what it missed.
+  const typed = [
+    ...extracted,
+    ...(lastQuestion && !state.callTranscript ? readCall(pairText, type, role).filter((f) => !extracted.some((e) => e.key === f.key)) : []),
+  ];
   const fromCall = state.callTranscript ? readCall(state.callTranscript, type, role) : [];
   const newFields = [...typed.filter((f) => !fromCall.some((c) => c.key === f.key) && !(fromCall.length > 0 && f.key === "client_name")), ...fromCall];
   const merged = { ...state.details };
@@ -264,6 +248,8 @@ export function mockConversation(req: ChatRequest): ConversationReply {
   const wantsDraft = /\b(draft|write)\b.{0,25}\b(it|now|contract|agreement)\b|\bdraft it\b|please draft/.test(lower);
   const affirmative = /^(yes|yeah|yep|correct|that'?s (all )?(right|correct)|all correct|ok(ay)?|sure|confirmed?)\b/.test(lower.trim());
 
+  const step = nextStep(type, merged, asked);
+
   if (wantsDraft) {
     if (state.ready || (state.stage === "confirm" && affirmative)) {
       return { ...base, intent: "draft", ready: true, stage: "confirm", action: "draft_now", reply: `${flagLine}Drafting it now. It will appear on the right, with any unknown details highlighted for you to fill in.` };
@@ -271,11 +257,11 @@ export function mockConversation(req: ChatRequest): ConversationReply {
     if (state.pushback >= 1) {
       return { ...base, intent: "draft", action: "draft_now", reply: `Understood. I'm drafting it now, and anything we don't know yet will be highlighted for you to fill in.` };
     }
-    const next = missing[0] ? `We still need the ${missing[0].toLowerCase()}. ` : "";
-    return { ...base, intent: "draft", pushback: true, reply: `${next}Careful drafting protects you, so let me ask a few more things first. ${TERMS_QUESTION[type ?? ""] ?? QUESTIONS.background}` };
+    const why = missing[0] ? `We still need the ${missing[0].toLowerCase()}, and careful drafting protects you. ` : "Careful drafting protects you. ";
+    return { ...base, intent: "draft", pushback: true, stage: step?.stage ?? state.stage, reply: `${why}${step ? step.q : ASK_TYPE}` };
   }
 
-  // Interview: move one stage forward per answer.
+  // Interview: one small question at a time.
   if (state.stage === "confirm") {
     if (affirmative) {
       return { ...base, intent: "draft", ready: true, stage: "confirm", reply: `${flagLine}Thank you. Just say "draft it" and I'll write it now.` };
@@ -283,18 +269,17 @@ export function mockConversation(req: ChatRequest): ConversationReply {
     return { ...base, intent: "draft", stage: "confirm", ready: false, reply: `${flagLine}Noted. ${summaryOf(merged, type)}` };
   }
 
-  const idx = state.stage ? STAGES.indexOf(state.stage) : -1;
-  const nextStage = STAGES[Math.min(idx + 1, STAGES.length - 1)];
-  let question: string;
-  if (nextStage === "confirm") question = summaryOf(merged, type);
-  else if (nextStage === "terms") question = TERMS_QUESTION[type ?? ""] ?? "Now the key terms: the amounts, dates and duration.";
-  else question = QUESTIONS[nextStage];
-
+  if (!type) {
+    return { ...base, intent: "chat", stage: "background", reply: `${flagLine}${ASK_TYPE}` };
+  }
+  if (!step) {
+    return { ...base, intent: "draft", stage: "confirm", reply: `${flagLine}${summaryOf(merged, type)}` };
+  }
   return {
     ...base,
-    intent: type ? "draft" : "chat",
-    stage: nextStage,
-    reply: `${flagLine}${question}`,
+    intent: "draft",
+    stage: step.stage,
+    reply: `${flagLine}Thank you. ${step.q}`,
   };
 }
 

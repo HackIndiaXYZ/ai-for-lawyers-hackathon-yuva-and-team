@@ -43,6 +43,7 @@ export default function VoiceCall({
   lang,
   onUse,
   onStart,
+  purpose = "intake",
   loadClient = defaultLoad,
 }: {
   /** True when the server has voice calls set up. */
@@ -52,6 +53,8 @@ export default function VoiceCall({
   onUse: (transcript: string) => Promise<boolean>;
   /** Called when a call begins, so the page can stop its own voice. */
   onStart: () => void;
+  /** Which voice agent to call. */
+  purpose?: "intake" | "help";
   loadClient?: LoadClient;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -88,7 +91,7 @@ export default function VoiceCall({
       const res = await fetch("/api/voice/session", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ lang }),
+        body: JSON.stringify({ lang, purpose }),
       });
       if (!res.ok) throw Object.assign(new Error((await readFailure(res)).message), { friendly: true });
       const body = (await res.json()) as { data?: { wsUrl?: string } };
@@ -143,7 +146,7 @@ export default function VoiceCall({
       // Sandhi has the details now; the call text is no longer needed on screen.
       setTurns([]);
       setPhase("idle");
-      setMessage("Done. Sandhi has read your call. Check the details on the right and the questions in the chat.");
+      setMessage(help ? "Done. Your advice is on the left." : "Done. Sandhi has read your call. Check the details on the right and the questions in the chat.");
     } else {
       setMessage("Sandhi could not read the call just now. Your call text is kept here: please try again.");
     }
@@ -156,16 +159,18 @@ export default function VoiceCall({
     setMessage("");
   }
 
+  const help = purpose === "help";
   const lines = clientLineCount(turns);
   const inCall = phase === "starting" || phase === "live";
 
   if (!available && phase === "idle") {
     return (
       <section className="card call-card" aria-label="Voice call">
-        <h2>Talk it out on a call</h2>
+        <h2>{help ? "Tell it on a call" : "Talk it out on a call"}</h2>
         <p className="muted">
-          A natural-sounding voice agent can interview you by voice, and Sandhi then writes it up. Voice calls are not
-          set up on this site yet. The microphone button and typing work as usual.
+          {help
+            ? "A voice agent can listen to your problem, one question at a time, and Sandhi then checks the law and tells you what to do and what not to do. The voice call is not set up on this site yet. The microphone button and typing work as usual."
+            : "A natural-sounding voice agent can interview you by voice, and Sandhi then writes it up. Voice calls are not set up on this site yet. The microphone button and typing work as usual."}
         </p>
       </section>
     );
@@ -173,11 +178,11 @@ export default function VoiceCall({
 
   return (
     <section className="card call-card" aria-label="Voice call">
-      <h2>Talk it out on a call</h2>
+      <h2>{help ? "Tell it on a call" : "Talk it out on a call"}</h2>
       <p className="muted">
-        Speak with a natural-sounding voice agent, then press End call. Sandhi reads what you said, fills in the
-        details, checks them against Indian law and is ready to draft. The agent only asks questions; it does not give
-        legal advice.
+        {help
+          ? "Speak with the voice agent. It asks one question at a time until it understands your situation. Then press End call and Sandhi checks Indian law and shows what to do and what not to do. The agent only listens and asks; the advice comes from Sandhi's checked law library."
+          : "Speak with a natural-sounding voice agent, then press End call. Sandhi reads what you said, fills in the details, checks them against Indian law and is ready to draft. The agent only asks questions; it does not give legal advice."}
       </p>
 
       <div className="btn-row wrap">
@@ -198,7 +203,7 @@ export default function VoiceCall({
         )}
         {phase === "ended" && lines > 0 && (
           <button type="button" className="btn btn-primary" onClick={() => void writeUp()} disabled={handing}>
-            {handing ? "Sandhi is reading your call…" : "Let Sandhi write this up"}
+            {handing ? "Sandhi is reading your call…" : help ? "Get my advice" : "Let Sandhi write this up"}
           </button>
         )}
         {phase === "ended" && (

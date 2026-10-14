@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CONTRACT_TYPES, LAW_BY_ID, validIds } from "../law";
+import { keepOneQuestion } from "../oneQuestion";
 
 /* ------------------------------------------------------------------ */
 /* Shared pieces                                                       */
@@ -172,6 +173,7 @@ export function sanitizeReply(r: ConversationReply, state: ChatState): Conversat
   const draftAllowed = state.ready || r.ready || state.pushback >= 1;
   return {
     ...r,
+    reply: keepOneQuestion(r.reply),
     contract_type: r.contract_type && KNOWN_TYPES.has(r.contract_type) ? r.contract_type : null,
     action: r.action === "draft_now" && !draftAllowed ? "none" : r.action,
     fields: r.fields

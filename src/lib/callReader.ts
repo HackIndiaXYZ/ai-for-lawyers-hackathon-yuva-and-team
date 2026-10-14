@@ -337,7 +337,11 @@ export function readCall(transcript: string, contractType: string | null, role: 
       case "names": {
         // Two names with no roles: the first is the client, the second is the other side.
         const parts = a.split(/\s+and\s+|,\s*/i).map((p) => cleanName(p)).filter((p): p is string => !!p);
-        if (parts.length >= 2 && mySide && otherSide) {
+        // A question that names one side ("the tenant's full name") settles whose name this is.
+        const named = parties.filter(([words]) => words.some((w) => new RegExp(`\\b${w}`, "i").test(q)));
+        if (named.length === 1 && parts.length >= 1) {
+          if (!found.has(named[0][1])) set(named[0][1], parts[0]);
+        } else if (parts.length >= 2 && mySide && otherSide) {
           if (!found.has(mySide[1])) set(mySide[1], parts[0]);
           if (!found.has(otherSide[1])) set(otherSide[1], parts[1]);
         } else if (parts.length === 1 && mySide && !found.has(mySide[1]) && /\b(my name|i am|i'm|this is)\b/i.test(a)) {

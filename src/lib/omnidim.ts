@@ -22,8 +22,15 @@ export class VoiceError extends Error {
 
 const OFFICIAL_BASES = ["https://omnidim.io/api/v1", "https://backend.omnidim.io/api/v1"];
 
-export function omnidimConfigured(): boolean {
-  const id = Number(process.env.OMNIDIM_AGENT_ID);
+/** "intake" is the contract-drafting agent. "help" is the Quick legal help agent, which has its own script and its own id. */
+export type VoicePurpose = "intake" | "help";
+
+function agentId(purpose: VoicePurpose): number {
+  return Number(purpose === "help" ? process.env.OMNIDIM_HELP_AGENT_ID : process.env.OMNIDIM_AGENT_ID);
+}
+
+export function omnidimConfigured(purpose: VoicePurpose = "intake"): boolean {
+  const id = agentId(purpose);
   return Boolean(process.env.OMNIDIM_API_KEY) && Number.isInteger(id) && id > 0;
 }
 
@@ -73,16 +80,17 @@ function explain(status: number): VoiceError {
 }
 
 export async function createVoiceSession(
-  opts: { language: string; signal?: AbortSignal },
+  opts: { language: string; purpose?: VoicePurpose; signal?: AbortSignal },
   fetchImpl: typeof fetch = fetch,
 ): Promise<VoiceSession> {
-  if (!omnidimConfigured()) {
+  const purpose = opts.purpose ?? "intake";
+  if (!omnidimConfigured(purpose)) {
     throw new VoiceError("not_configured", "Voice calls are not set up yet. You can still type or use the microphone button.", 503);
   }
   const body = JSON.stringify({
-    agent_id: Number(process.env.OMNIDIM_AGENT_ID),
+    agent_id: agentId(purpose),
     type: "voice",
-    custom_variables: { language: opts.language, product: "Sandhi" },
+    custom_variables: { language: opts.language, product: "Sandhi", purpose },
     metadata: { source: "sandhi-web" },
   });
 

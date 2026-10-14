@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import "./law.css";
 import "./talk.css";
@@ -7,30 +7,35 @@ import "./check.css";
 import "./seal.css";
 import "./voice.css";
 import "./quality.css";
+import "./home.css";
+import "./help.css";
 
-const display = Space_Grotesk({
+// One friendly, rounded font for headings and text, like the airline-style look the product follows.
+const display = DM_Sans({
   subsets: ["latin"],
   variable: "--font-display",
   display: "swap",
+  weight: ["500", "600", "700"],
 });
 
-const body = Inter({
+const body = DM_Sans({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
   title: "Sandhi — speak it, sign it",
   description:
-    "Draft an Indian-law contract by talking, and catch the loopholes before you sign. Every answer cites the law.",
+    "Quick legal help, contract drafting and contract checking in Indian law. Spoken or typed, one question at a time, every answer cites the law.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#070b14",
+  themeColor: "#eef3fb",
 };
 
 export default function RootLayout({

@@ -11,6 +11,7 @@ const LIMITS: Record<string, number> = {
   "/api/legal-check": 20,
   "/api/obligations": 20,
   "/api/chat": 40,
+  "/api/help": 40,
   "/api/voice/session": 4,
 };
 const DEFAULT_LIMIT = 40;

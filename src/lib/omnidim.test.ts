@@ -94,3 +94,18 @@ describe("creating a session", () => {
     expect((f.mock.calls[0] as unknown as [string])[0]).toBe("https://omnidim.io/api/v1/sessions/create");
   });
 });
+
+describe("help voice agent", () => {
+  it("has its own agent id and is configured separately", async () => {
+    const { omnidimConfigured } = await import("./omnidim");
+    const keep = { ...process.env };
+    process.env.OMNIDIM_API_KEY = "k";
+    process.env.OMNIDIM_AGENT_ID = "11";
+    delete process.env.OMNIDIM_HELP_AGENT_ID;
+    expect(omnidimConfigured()).toBe(true);
+    expect(omnidimConfigured("help")).toBe(false);
+    process.env.OMNIDIM_HELP_AGENT_ID = "22";
+    expect(omnidimConfigured("help")).toBe(true);
+    process.env = keep;
+  });
+});

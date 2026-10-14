@@ -92,6 +92,8 @@ export interface ServerStatus {
   mode: ApiMode;
   /** True when voice calls (OmniDimension) are set up on the server. */
   voiceCall: boolean;
+  /** True when the Quick legal help voice agent is set up. */
+  helpCall: boolean;
 }
 
 /** Asks the server whether the real AI or the demo answers are in use, and whether voice calls are set up. */
@@ -100,7 +102,7 @@ export async function getStatus(): Promise<ServerStatus | null> {
     const res = await fetch("/api/status", { cache: "no-store" });
     if (!res.ok) return null;
     const b = await res.json();
-    return { mode: b.mode === "live" ? "live" : "demo", voiceCall: b.voiceCall === true };
+    return { mode: b.mode === "live" ? "live" : "demo", voiceCall: b.voiceCall === true, helpCall: b.helpCall === true };
   } catch {
     return null;
   }

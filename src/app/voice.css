@@ -2,11 +2,11 @@
 
 .orb-wrap .orb[data-state="listening"] {
   animation: orb-listen 1.2s ease-in-out infinite;
-  box-shadow: 0 0 0 6px rgba(236, 72, 153, 0.35), 0 0 36px rgba(236, 72, 153, 0.55);
+  box-shadow: 0 0 0 6px rgba(47, 107, 255, 0.28), 0 0 36px rgba(47, 107, 255, 0.5);
 }
 .orb-wrap .orb[data-state="speaking"] {
   animation: orb-speak 1.6s ease-in-out infinite;
-  box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.3), 0 0 32px rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 0 6px rgba(19, 138, 75, 0.25), 0 0 32px rgba(19, 138, 75, 0.4);
 }
 @keyframes orb-listen {
   0%, 100% { transform: scale(1); }
@@ -53,7 +53,7 @@
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--field);
 }
 .call-turn {
   margin: 0;
