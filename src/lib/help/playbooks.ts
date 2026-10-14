@@ -14,6 +14,15 @@ export interface HelpStep {
   /** Short label for the "What I understood" list. */
   label: string;
   q: string;
+  /** One sentence, with no question in it, saying why a lawyer needs this. It is spoken before the question. */
+  why?: string;
+}
+
+/** A law that is not in the Sandhi library. It is always shown with "Please confirm". */
+export interface ExtraLaw {
+  law: string;
+  section: string;
+  plain: string;
 }
 
 export interface Playbook {
@@ -23,6 +32,10 @@ export interface Playbook {
   match: RegExp;
   /** Library ids this advice rests on. Each must exist in the law library (a test checks). */
   laws: { id: string; plain: string }[];
+  /** Laws outside the library, such as a Supreme Court ruling. Shown with "Please confirm". */
+  extras?: ExtraLaw[];
+  /** What a lawyer would say first, in one or two sentences, before the questions start. */
+  opening?: string;
   steps: HelpStep[];
   headline: string;
   dos: string[];
@@ -32,19 +45,34 @@ export interface Playbook {
   who: string;
 }
 
-const WHEN: HelpStep = { label: "When it happened", q: "When did this happen, or when did it start?" };
+const WHEN: HelpStep = {
+  label: "When it happened",
+  q: "When did this happen, or when did it start?",
+  why: "Dates matter in law, because notices and claims have time limits.",
+};
 const WRITTEN: HelpStep = {
   label: "What is in writing",
   q: "Is anything about this in writing, such as an agreement, messages, emails, receipts or bank transfers?",
+  why: "In a dispute, what is written down usually decides who is believed.",
 };
-const WANT: HelpStep = { label: "What you want", q: "What outcome would you like from this?" };
-const ELSE: HelpStep = { label: "Anything else", q: "Is there anything else important that I have not asked about?" };
+const WANT: HelpStep = {
+  label: "What you want",
+  q: "What outcome would you like from this?",
+  why: "The right step depends on what you are aiming for.",
+};
+const ELSE: HelpStep = {
+  label: "Anything else",
+  q: "Is there anything else important that I have not asked about?",
+  why: "Clients often keep back the one detail that changes the advice.",
+};
 
 export const PLAYBOOKS: Playbook[] = [
   {
     id: "deposit",
     title: "Security deposit not returned",
     match: /deposit|advance (money|amount)|not (returning|refunding|returned)|refund.*(landlord|flat|house)/i,
+    opening:
+      "A security deposit is your money held in trust, and a landlord cannot keep it without a lawful reason. Let me understand the facts so that I can tell you how to get it back.",
     laws: [
       { id: "TPA-108", plain: "A landlord and tenant each have duties under a lease, including what happens when the tenant leaves." },
       { id: "MTA-2021", plain: "The central model tenancy law limits deposits and expects them back when the tenant leaves. Each state decides whether to adopt it, so check whether your state has." },
@@ -126,6 +154,8 @@ export const PLAYBOOKS: Playbook[] = [
     id: "cheque",
     title: "A cheque bounced",
     match: /cheque|check bounce|bounced|dishonou?r|section 138|insufficient funds/i,
+    opening:
+      "A bounced cheque can be a criminal offence, but the law gives only a short, strict window to act. Let me ask a few questions to see exactly where you stand.",
     laws: [
       { id: "NIA-138", plain: "A bounced cheque given for a legal debt can be a criminal offence, but only if a strict notice-and-time sequence is followed." },
       { id: "ICA-73", plain: "Separately, you can claim the money you are owed as a civil debt." },
@@ -165,6 +195,8 @@ export const PLAYBOOKS: Playbook[] = [
     id: "tenant_trouble",
     title: "Landlord is threatening or harassing me",
     match: /(my )?landlord.*(evict|vacate|throw|threat|harass|lock|cut|electric|water|force|leave|notice)|(evict|vacate|throw out|thrown out).*(me|us)|asked me to (leave|vacate)|rent (increase|hike)/i,
+    opening:
+      "A landlord cannot throw you out by force or by cutting off your water or electricity. Let me understand your situation so I can tell you what you can do.",
     laws: [
       { id: "TPA-106", plain: "To end a tenancy the landlord has to give proper written notice, usually 15 days for a monthly tenancy unless the agreement or state law says otherwise." },
       { id: "TPA-108", plain: "A landlord has duties too, such as not disturbing the tenant's peaceful use of the home." },
@@ -279,9 +311,61 @@ export const PLAYBOOKS: Playbook[] = [
     who: "The National Consumer Helpline (1915), then the Consumer Commission. A consumer advocate can help for larger claims.",
   },
   {
+    id: "police",
+    title: "Trouble with the police",
+    match: /\b(police|constable|cops?|inspector|havaldar|sub-?inspector)\b.*\b(rude|abus\w*|shout\w*|scold\w*|beat\w*|slap\w*|hit|harass\w*|stop\w*|detain\w*|arrest\w*|object\w*|question\w*|bribe|demand\w*|threat\w*|torture|misbehav\w*|search\w*|refus\w*|not (register|accept|take)\w*|walking|road|night|checking|challan|fine|phone)\b|\b(rude|abus\w*|harass\w*|stopped|detained|arrested|bribe|beat|beaten|slapped|misbehav\w*)\b.*\b(police|constable|cops?|inspector|havaldar)\b|\block-?up\b|\bFIR\b/i,
+    opening:
+      "Let me tell you the basic position first. Walking on a public road, even late at night, is not an offence, and the police cannot detain or arrest you merely for that. Even so, I need to understand exactly what happened before I advise you.",
+    laws: [
+      { id: "CON-21", plain: "Your life and personal liberty are protected. A person cannot be deprived of liberty except by a procedure established by law, which is why an officer cannot simply hold you without a legal reason." },
+      { id: "CON-14", plain: "Everyone is entitled to equal treatment, so police power must be used fairly and not arbitrarily." },
+    ],
+    extras: [
+      { law: "Constitution of India", section: "Article 19(1)(d)", plain: "Every citizen has the freedom to move freely throughout India. Reasonable restrictions are allowed by law, but being on a public road is not a reason in itself." },
+      { law: "Constitution of India", section: "Article 22", plain: "A person who is arrested must be told the grounds, can consult a lawyer of their choice, and must be produced before a magistrate within 24 hours of arrest." },
+      { law: "Bharatiya Nagarik Suraksha Sanhita 2023", section: "arrest provisions, including ss.35, 47 and 58", plain: "These set out when the police may arrest without a warrant, that the grounds must be told to the person, and that the person must be taken before a magistrate within 24 hours. The old Code of Criminal Procedure sections have been replaced, so please confirm the current numbers." },
+      { law: "D.K. Basu v. State of West Bengal (Supreme Court, 1997)", section: "guidelines on arrest and detention", plain: "Police must wear clear name tags, prepare an arrest memo, inform a relative or friend, and allow a medical examination when a person is detained." },
+    ],
+    steps: [
+      { label: "Where it happened", q: "Where exactly did this happen?", why: "The place and the time decide which police station is responsible and what powers the officer had." },
+      { label: "What the officer did", q: "Exactly what did the officer say or do to you?", why: "The law treats rude words, a lawful question, a search and a detention very differently, so I need the actual words and actions." },
+      { label: "Detained or searched", q: "Were you stopped, searched, taken to a police station or held in any way?", why: "If you were held, your rights under Article 22 apply and the officer had to follow a procedure." },
+      { label: "Force or threat", q: "Did the officer touch you, use force or threaten you?", why: "Physical force or threats are a separate and more serious matter than rudeness." },
+      { label: "Money or favour", q: "Did the officer ask you for money or any favour?", why: "A demand for money is an offence in itself and changes what we can do." },
+      { label: "Officer's identity", q: "Did you notice the officer's name plate, badge number or vehicle number?", why: "A complaint is only effective if it can be traced to the right officer." },
+      { label: "Proof", q: "Is there any video, CCTV, photo or witness to what happened?", why: "Independent proof is what turns your word into a case." },
+      { label: "What you want", q: "What would you like to happen: an apology, a complaint against the officer, or simply to know your rights?", why: "The route differs for each of these." },
+      ELSE,
+    ],
+    headline: "Your rights when dealing with the police",
+    dos: [
+      "Stay calm and polite, even if the officer is not. Calm behaviour is your best protection, and nothing you say politely can be used against your rights.",
+      "Ask clearly: \"Am I free to go?\" and \"Under what provision are you stopping me?\" Ask for the officer's name and number, and note the time, place and vehicle number.",
+      "If you are detained or arrested, ask to be told the grounds, ask that a relative or friend be informed, and ask to speak to a lawyer. A person must be produced before a magistrate within 24 hours.",
+      "Record or write down everything as soon as you are safe: the exact words, the time, the place and the people nearby. If you can lawfully take a video, do so openly.",
+      "For rude or improper conduct, send a written complaint to the senior officer (the Station House Officer, then the DCP or SP) and keep the receipt. You can also complain to the State Police Complaints Authority or the Human Rights Commission, and call 112 if you are in danger.",
+      "If you are a woman, ask whether a woman officer is present. As a rule, a woman is not arrested between sunset and sunrise without a magistrate's written permission. Please confirm this with an advocate.",
+    ],
+    donts: [
+      "Do not argue, abuse the officer or raise your hand, however unfair it feels. It can give them a genuine reason to act against you.",
+      "Do not run, or physically resist even an unlawful stop. Object calmly and complain afterwards.",
+      "Do not sign any blank paper or any statement you have not read, and do not pay any money to make it go away.",
+      "Do not lie about who you are. You can decline to answer other questions until you have spoken to a lawyer.",
+      "Do not delete any video or message from that night.",
+    ],
+    next: [
+      "Write down what happened, in order, tonight.",
+      "Send a written complaint to the senior officer and keep the acknowledgement.",
+      "If the matter was serious (force, detention or a demand for money), speak to an advocate about a formal complaint.",
+    ],
+    who: "The senior officer of that station (SHO, then DCP or SP), the State Police Complaints Authority, the Human Rights Commission, and an advocate if you were detained or hurt. For immediate danger, call 112.",
+  },
+  {
     id: "fraud",
     title: "I was cheated or scammed",
     match: /scam|fraud|cheat|cheated|duped|phishing|otp|fake|online payment|transferred money|forged|forgery|impersonat/i,
+    opening:
+      "If money has just left your account, time matters most, so call 1930 and tell your bank right now while we talk. Then let me understand exactly what happened.",
     laws: [
       { id: "BNS-318", plain: "Cheating, which means deceiving someone into handing over money or property, is a criminal offence." },
       { id: "BNS-316", plain: "Misusing money or property that was entrusted to someone is criminal breach of trust." },
@@ -411,11 +495,12 @@ export const GENERAL: Playbook = {
     { id: "LIM-55", plain: "Legal claims have time limits, so do not delay." },
   ],
   steps: [
-    { label: "What happened", q: "In a sentence or two, what has happened?" },
-    { label: "Who is involved", q: "Who is involved, and how are they connected to you?" },
-    WHEN,
-    WRITTEN,
-    { label: "Loss or risk", q: "What have you lost, or what are you afraid will happen?" },
+    { label: "Who is involved", q: "Who is involved, and how are they connected to you?", why: "The legal position depends on the relationship between the people." },
+    { ...WHEN },
+    { label: "Where it happened", q: "Where did this happen?", why: "The place decides which court, police station or authority is responsible." },
+    { label: "Harm or threat", q: "Has anyone been hurt, threatened or put under pressure?", why: "If so, safety and the police come before anything else." },
+    { label: "Proof", q: "Do you have any proof, such as messages, photos, videos, receipts or witnesses?", why: "Proof is what a case is built on." },
+    { label: "Loss or fear", q: "What have you lost so far, or what are you afraid will happen?", why: "That tells me how urgent this is." },
     WANT,
     ELSE,
   ],
@@ -437,7 +522,7 @@ export const GENERAL: Playbook = {
 };
 
 /** Most specific problems first, so "my tenant is not paying rent" is not mistaken for unpaid fees. */
-const ORDER = ["cheque", "deposit", "tenant_trouble", "landlord_trouble", "fraud", "forced", "consumer", "unpaid", "breach"];
+const ORDER = ["cheque", "deposit", "tenant_trouble", "landlord_trouble", "police", "fraud", "forced", "consumer", "unpaid", "breach"];
 
 export function playbookFor(text: string): Playbook | null {
   for (const id of ORDER) {

@@ -163,3 +163,49 @@ describe("sanitizeHelp (the safety layer for real AI replies)", () => {
     expect(r.review).toBe(true);
   });
 });
+
+describe("a lawyer's way of speaking and relevance", () => {
+  it("recognises a police-conduct problem however it is worded", () => {
+    expect(playbookFor("a police was rude to me just because I am walking on the road")?.id).toBe("police");
+    expect(playbookFor("I was walking on a road at 1 am, a police is objecting me")?.id).toBe("police");
+    expect(playbookFor("police are not registering my FIR")?.id).toBe("police");
+    expect(playbookFor("police arrested my brother")?.id).toBe("police");
+  });
+
+  it("answers the rights question straight away and never asks about contracts, writing or money", () => {
+    const replies = run("a police was rude to me just because I am walking on the road", ["on the main road near my house at 1 am", "he shouted that I should not walk at night", "no, he let me go", "no", "no", "no I did not see", "no", "to know my rights", "no"]);
+    const first = replies[0];
+    expect(first.topic).toBe("police");
+    expect(first.reply).toMatch(/not an offence/);
+    expect(first.reply).toMatch(/Where exactly/);
+    for (const r of replies.filter((x) => x.stage === "asking")) {
+      expect(r.reply, r.reply).not.toMatch(/agreement|receipts|bank transfers|what have you lost/i);
+      expect(countQuestions(r.reply)).toBe(1);
+    }
+    const last = replies[replies.length - 1];
+    expect(last.stage).toBe("advice");
+    expect(last.advice?.headline).toMatch(/police/i);
+    expect(last.advice?.sections.map((s) => s.section).join(" ")).toMatch(/Article 22/);
+    expect(last.advice?.sections.filter((s) => s.id === null).every((s) => s.confidence === "verify")).toBe(true);
+    expect(last.review).toBe(true);
+  });
+
+  it("explains why it asks, in a sentence with no question mark", () => {
+    const r = mockHelp(req([{ role: "user", content: "a police stopped me on the road" }]));
+    expect(r.reply).toMatch(/place and the time decide/);
+    expect(countQuestions(r.reply)).toBe(1);
+  });
+
+  it("does not ask a client who already described the problem in a sentence to describe it again", () => {
+    const r = mockHelp(req([{ role: "user", content: "my neighbour keeps dumping garbage at my gate every day" }]));
+    expect(r.reply).not.toMatch(/what is the problem/i);
+    expect(r.topic).toBe("general");
+    expect(r.reply).toMatch(/Who is involved/);
+  });
+
+  it("varies its acknowledgements instead of saying the same words every turn", () => {
+    const replies = run("a police was rude to me on the road", ["road", "shouted", "no", "no", "no"]);
+    const leads = replies.filter((r) => r.stage === "asking").slice(1, 5).map((r) => r.reply.split(" ").slice(0, 2).join(" "));
+    expect(new Set(leads).size).toBeGreaterThan(2);
+  });
+});

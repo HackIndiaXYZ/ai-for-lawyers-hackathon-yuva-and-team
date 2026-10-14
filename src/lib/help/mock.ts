@@ -13,6 +13,9 @@ const SAFETY = "If anyone is in danger right now, please call 112 first.";
 const JUST_TELL = /just tell me|skip|enough questions|no more questions|give me the (advice|answer)|tell me what to do|stop asking/i;
 const PUSHED_BACK = "a few more questions";
 
+const ACKS = ["Understood.", "Noted.", "I see.", "That is useful to know.", "Thank you for telling me.", "Good, that helps."];
+const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
+
 const clip = (s: string, n = 140) => (s.length > n ? `${s.slice(0, n - 1).trim()}…` : s);
 
 /** Client lines from a call transcript ("Client: ..."), in order. */
@@ -27,7 +30,8 @@ function buildAdvice(pb: Playbook, facts: { label: string; value: string }[]): H
   return {
     headline: pb.headline,
     understood: facts.map((f) => `${f.label}: ${clip(f.value)}`),
-    sections: pb.laws.map((l) => {
+    sections: [
+      ...pb.laws.map((l) => {
       const e = LAW_BY_ID.get(l.id);
       return {
         id: e ? l.id : null,
@@ -36,7 +40,9 @@ function buildAdvice(pb: Playbook, facts: { label: string; value: string }[]): H
         plain: l.plain,
         confidence: e && !e.verify ? ("high" as const) : ("verify" as const),
       };
-    }),
+      }),
+      ...(pb.extras ?? []).map((x) => ({ id: null, law: x.law, section: x.section, plain: x.plain, confidence: "verify" as const })),
+    ],
     dos: pb.dos,
     donts: pb.donts,
     steps: pb.next,
@@ -78,7 +84,9 @@ export function mockHelp(req: HelpRequest): HelpReply {
 
   /* ---------- typed or spoken, one question at a time ---------- */
   const firstMatch = playbookFor(user[0] ?? "");
-  const pb = firstMatch ?? playbookById(req.topic) ?? playbookFor(allText) ?? (user.length >= 2 ? GENERAL : null);
+  // A client who has already described the problem in a full sentence is not asked to describe it again.
+  const described = Boolean(firstMatch) || wordCount(user[0] ?? "") >= 5;
+  const pb = firstMatch ?? playbookById(req.topic) ?? playbookFor(allText) ?? (described || user.length >= 2 ? GENERAL : null);
 
   if (!pb) {
     return {
@@ -93,9 +101,9 @@ export function mockHelp(req: HelpRequest): HelpReply {
   }
 
   // If the first message was too vague to place, the next message is the description of the problem.
-  const descriptionIdx = firstMatch ? 0 : 1;
+  const descriptionIdx = described ? 0 : 1;
   const answers = user.slice(descriptionIdx + 1);
-  const startAt = pb.id === GENERAL.id && !firstMatch ? 1 : 0;
+  const startAt = 0;
   const answered = answers.length;
   const stepIdx = startAt + answered;
 
@@ -126,8 +134,13 @@ export function mockHelp(req: HelpRequest): HelpReply {
 
   if (!stepsLeft) return adviceReply(pb, facts, false, heardDanger);
 
-  const q = pb.steps[stepIdx].q;
-  const lead = answered === 0 ? "I'm sorry you're dealing with this. Please don't worry, we'll go through it step by step." : "Thank you, that helps.";
+  const step = pb.steps[stepIdx];
+  const ack = ACKS[answered % ACKS.length];
+  const lead =
+    answered === 0
+      ? pb.opening ?? "I'm sorry you are dealing with this. Please don't worry, we will go through it step by step."
+      : ack;
+  const q = `${step.why ? `${step.why} ` : ""}${step.q}`;
   return {
     reply: `${safetyLine}${lead} ${q}`,
     topic: pb.id,
